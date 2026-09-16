@@ -1,0 +1,15 @@
+# Bases vectoriales locales (se regeneran con indexar_corpus.py o index_pdfs*.py)
+chroma_db/
+chroma_guias_clinicas/
+chroma_guias_ollama/
+
+# Copia de trabajo del profesor (el corpus bueno está en nexora_salud_corpus/)
+ContentRAG_Salud/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Sistema
+.DS_Store
