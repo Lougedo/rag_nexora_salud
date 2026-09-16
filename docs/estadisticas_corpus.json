@@ -1,0 +1,38 @@
+{
+  "total": {
+    "docs": 122,
+    "paginas": 14059,
+    "caracteres": 34509421,
+    "bytes": 321599457,
+    "palabras_aprox": 5751570,
+    "tokens_aprox": 8627355,
+    "trozos_1000_200": 43136
+  },
+  "por_capa": {
+    "1": {
+      "docs": 43,
+      "paginas": 7701,
+      "caracteres": 18350919,
+      "bytes": 199551286
+    },
+    "2": {
+      "docs": 44,
+      "paginas": 4424,
+      "caracteres": 9197440,
+      "bytes": 74826915
+    },
+    "3": {
+      "docs": 31,
+      "paginas": 1928,
+      "caracteres": 6951581,
+      "bytes": 47203389
+    },
+    "4": {
+      "docs": 4,
+      "paginas": 6,
+      "caracteres": 9481,
+      "bytes": 17867
+    }
+  },
+  "avisos": []
+}
