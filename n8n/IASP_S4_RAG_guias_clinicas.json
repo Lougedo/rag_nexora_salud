@@ -1,0 +1,325 @@
+{
+  "name": "IASP S4 · RAG sobre guías clínicas",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## A · INDEXAR (se hace una vez por documento)\n1. Pulsa **Test workflow** y abre el formulario.\n2. Sube una guía en PDF.\n3. Abre cada nodo y mira qué sale: fragmentos, vectores...",
+        "width": 1000,
+        "height": 560,
+        "color": 4
+      },
+      "id": "bb8c8083-d821-4f9b-8dd5-da84980ddd50",
+      "name": "Nota 6b2e",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## B · CONSULTAR (cada vez que alguien pregunta)\nPulsa **Open chat** abajo y pregunta.\nLuego abre los **Logs** y mira qué fragmentos ha recuperado la herramienta.",
+        "width": 1000,
+        "height": 620,
+        "color": 5
+      },
+      "id": "7aa124e4-6949-4639-a5cb-2fae76fc97d9",
+      "name": "Nota 6e0f",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Sube una guía clínica",
+        "formDescription": "El PDF se trocea, se convierte en vectores y se guarda en memoria.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Guia",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf",
+              "multipleFiles": false,
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c988dd84-af17-477b-b2be-6fa0576f7ab2",
+      "name": "A1 · Subir guía (formulario)",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c8e9c482-7dd5-43f2-839f-c66ea8c40c5d"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": {
+          "__rl": true,
+          "value": "guias_salud",
+          "mode": "list",
+          "cachedResultName": "guias_salud"
+        },
+        "clearStore": false
+      },
+      "id": "69aca4bf-425d-4c38-8097-67845a283a40",
+      "name": "A2 · Guardar en el almacén vectorial",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "id": "38cff5c4-559f-4627-92d5-876f04a776d4",
+      "name": "Embeddings Gemini (indexar)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {}
+      },
+      "id": "1117e999-df6c-417c-9912-f7f3333893af",
+      "name": "Cargador de documentos",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "chunkSize": 1000,
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "id": "a43661ef-0a78-4ec9-9f30-55a4eeb7f78e",
+      "name": "Troceador (chunking)",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        600,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "9dd4cdbf-c3c1-4908-a948-6d3436d55b7f",
+      "name": "B1 · Chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        640
+      ],
+      "webhookId": "045204ee-0e67-46a1-8f99-60a0f351088f"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres un asistente que responde preguntas sobre guías de práctica clínica del Sistema Nacional de Salud.\n\nReglas:\n1. Antes de responder, usa SIEMPRE la herramienta guias_clinicas.\n2. Responde solo con lo que devuelva la herramienta. No uses tu conocimiento general.\n3. Si la información no aparece, responde exactamente: \"No encuentro esa información en las guías cargadas.\"\n4. Di de qué guía sale cada dato (tipo 1 o tipo 2, y su año si aparece).\n5. No des consejo médico personal. Responde en español."
+        }
+      },
+      "id": "507509d0-5ed5-48e6-9fbc-df955b0f6e08",
+      "name": "B2 · Agente",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "64e35cb7-30ae-4df1-ba6b-319bf85721b6",
+      "name": "Modelo Gemini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        180,
+        880
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ee8dbd27-3850-4728-a714-0b4dfe263064",
+      "name": "Memoria de la conversación",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        360,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "guias_clinicas",
+        "toolDescription": "Busca fragmentos de texto en las guías de práctica clínica cargadas (diabetes tipo 1 y diabetes tipo 2). Úsala para cualquier pregunta clínica.",
+        "memoryKey": {
+          "__rl": true,
+          "value": "guias_salud",
+          "mode": "list",
+          "cachedResultName": "guias_salud"
+        },
+        "topK": 4,
+        "includeDocumentMetadata": true
+      },
+      "id": "b4be7c19-b881-47f0-8590-a34b01c33d7d",
+      "name": "Buscar en las guías",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        560,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "id": "b5229f0d-f07d-49c1-b3be-1110fa12ec81",
+      "name": "Embeddings Gemini (buscar)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        620,
+        1060
+      ]
+    }
+  ],
+  "connections": {
+    "A1 · Subir guía (formulario)": {
+      "main": [
+        [
+          {
+            "node": "A2 · Guardar en el almacén vectorial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Gemini (indexar)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "A2 · Guardar en el almacén vectorial",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cargador de documentos": {
+      "ai_document": [
+        [
+          {
+            "node": "A2 · Guardar en el almacén vectorial",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Troceador (chunking)": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Cargador de documentos",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "B1 · Chat": {
+      "main": [
+        [
+          {
+            "node": "B2 · Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo Gemini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "B2 · Agente",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memoria de la conversación": {
+      "ai_memory": [
+        [
+          {
+            "node": "B2 · Agente",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar en las guías": {
+      "ai_tool": [
+        [
+          {
+            "node": "B2 · Agente",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Gemini (buscar)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Buscar en las guías",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false
+}

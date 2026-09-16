@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA Health · Asistente Clínico IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1a;
+            --bg-card: #111827;
+            --bg-chat: #0d1321;
+            --bg-input: #1a2236;
+            --bg-user-msg: #2563eb;
+            --bg-bot-msg: #1e293b;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #1e293b;
+            --border-accent: #2563eb33;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === HEADER === */
+        header {
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: rgba(10, 15, 26, 0.8);
+            backdrop-filter: blur(20px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-text span {
+            color: var(--accent);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 8px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-local {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-cloud {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .badge-rag {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid var(--border-accent);
+        }
+
+        /* === AI PROVIDER SWITCH === */
+        .provider-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px 14px;
+        }
+
+        .provider-label {
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s;
+            user-select: none;
+        }
+
+        .provider-label.active { color: var(--text-primary); }
+        .provider-label.inactive { color: var(--text-muted); }
+
+        .provider-label-ollama.active { color: var(--success); }
+        .provider-label-openai.active { color: var(--accent); }
+
+        .toggle-track {
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+            background: var(--success);
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s;
+        }
+
+        .toggle-track.openai {
+            background: var(--accent);
+        }
+
+        .toggle-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .toggle-track.openai .toggle-thumb {
+            transform: translateX(20px);
+        }
+
+        /* === MAIN LAYOUT === */
+        .app-container {
+            display: flex;
+            flex: 1;
+            margin-top: 69px;
+            height: calc(100vh - 69px);
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            width: 280px;
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+            background: rgba(17, 24, 39, 0.5);
+        }
+
+        .sidebar h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .source-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .source-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .source-item:hover {
+            border-color: var(--border-accent);
+            color: var(--text-primary);
+        }
+
+        .source-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            flex-shrink: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .tech-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .tech-item .tech-name { color: var(--text-secondary); }
+        .tech-item .tech-value { color: var(--text-primary); font-weight: 600; transition: color 0.3s; }
+
+        .cost-card {
+            text-align: center;
+            padding: 14px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        /* === CHAT AREA === */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+            width: 100%;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 85%;
+            animation: messageIn 0.3s ease-out;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-user { align-self: flex-end; flex-direction: row-reverse; }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .avatar-bot { background: linear-gradient(135deg, var(--accent), #8b5cf6); }
+        .avatar-user { background: #374151; }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .message-bot .message-content {
+            background: var(--bg-bot-msg);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-user .message-content {
+            background: var(--bg-user-msg);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-provider-tag {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 6px;
+            opacity: 0.6;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px 40px;
+        }
+
+        .welcome-icon { font-size: 48px; margin-bottom: 16px; }
+
+        .welcome-message h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .welcome-message p {
+            color: var(--text-secondary);
+            font-size: 15px;
+            max-width: 480px;
+            margin: 0 auto 28px;
+            line-height: 1.6;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .chip {
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chip:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+            background: var(--accent-glow);
+        }
+
+        /* === INPUT AREA === */
+        .chat-input-area {
+            padding: 16px 0 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 6px 6px 6px 18px;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .chat-input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            padding: 8px 0;
+        }
+
+        .chat-input::placeholder { color: var(--text-muted); }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--accent);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover { background: #2563eb; transform: scale(1.05); }
+        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .input-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .input-hint .provider-indicator {
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        /* === TYPING INDICATOR === */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        /* === SWITCH NOTIFICATION === */
+        .switch-toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+
+        .switch-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .switch-toast.ollama {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .switch-toast.openai {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .chat-container { padding: 0 16px; }
+            .provider-switch { padding: 4px 10px; }
+            .header-badges { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">🏥</div>
+            <div class="logo-text">NEXORA <span>Health</span></div>
+        </div>
+        <div class="header-right">
+            <!-- AI Provider Switch -->
+            <div class="provider-switch">
+                <span class="provider-label provider-label-ollama active" onclick="setProvider('ollama')">
+                    🦙 Ollama
+                </span>
+                <div class="toggle-track" id="toggleTrack" onclick="toggleProvider()">
+                    <div class="toggle-thumb"></div>
+                </div>
+                <span class="provider-label provider-label-openai inactive" onclick="setProvider('openai')">
+                    OpenAI ⚡
+                </span>
+            </div>
+            <div class="header-badges">
+                <div class="badge badge-local" id="badgeProvider">● Local</div>
+                <div class="badge badge-rag">RAG · Guías SNS</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Switch notification toast -->
+    <div class="switch-toast" id="switchToast"></div>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div>
+                <h3>Base de conocimiento</h3>
+                <div class="source-list" id="sourceList"></div>
+            </div>
+
+            <div>
+                <h3>Estadísticas</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statDocs">40</div>
+                        <div class="stat-label">Documentos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statChunks">12.4K</div>
+                        <div class="stat-label">Fragmentos</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3>Stack técnico</h3>
+                <div class="tech-stack">
+                    <div class="tech-item">
+                        <span class="tech-name">Orquestación</span>
+                        <span class="tech-value">Flowise</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-name">LLM</span>
+                        <span class="tech-value" id="techLLM">Phi-4 14B</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-name">Embeddings</span>
+                        <span class="tech-value" id="techEmbed">Nomic Embed</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-name">Vector DB</span>
+                        <span class="tech-value">ChromaDB</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-name">Fuente</span>
+                        <span class="tech-value">GuíaSalud</span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3>Coste</h3>
+                <div class="cost-card stat-card" id="costCard" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);">
+                    <div class="stat-value" id="costValue" style="color: var(--success);">0 €</div>
+                    <div class="stat-label" id="costLabel">100% Local · Gratis</div>
+                </div>
+            </div>
+        </aside>
+
+        <main style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-message">
+                        <div class="welcome-icon">🩺</div>
+                        <h2>Asistente de Guías Clínicas</h2>
+                        <p>
+                            Consulta las guías de práctica clínica del Sistema Nacional de Salud.
+                            Usa el switch de arriba para alternar entre IA local (Ollama) y cloud (OpenAI).
+                        </p>
+                        <div class="suggestion-chips">
+                            <div class="chip" onclick="askQuestion(this.textContent)">
+                                ¿Tratamiento inicial para diabetes tipo 2?
+                            </div>
+                            <div class="chip" onclick="askQuestion(this.textContent)">
+                                Criterios diagnósticos de depresión mayor
+                            </div>
+                            <div class="chip" onclick="askQuestion(this.textContent)">
+                                Recomendaciones de ejercicio para EPOC
+                            </div>
+                            <div class="chip" onclick="askQuestion(this.textContent)">
+                                ¿Cuándo derivar a especialista por hipertensión?
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <div class="input-wrapper">
+                        <input
+                            type="text"
+                            class="chat-input"
+                            id="chatInput"
+                            placeholder="Pregunta sobre las guías clínicas..."
+                            onkeydown="if(event.key==='Enter') sendMessage()"
+                        >
+                        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+                    </div>
+                    <div class="input-hint">
+                        Usando <span class="provider-indicator" id="inputProviderLabel" style="color: var(--success);">🦙 Ollama (local)</span>
+                        · Las respuestas se basan en guías clínicas del SNS
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ============================================================
+        // CONFIGURACIÓN — PON TUS CHATFLOW IDs AQUÍ
+        // ============================================================
+        const CONFIG = {
+            ollama: {
+                chatflowId: 'add8e105-bc43-48fe-a3c6-7c6a6d004214',   // <-- CAMBIA ESTO
+                label: '🦙 Ollama (local)',
+                llm: 'Phi-4 14B',
+                embeddings: 'Nomic Embed',
+                cost: '0 €',
+                costLabel: '100% Local · Gratis',
+                costBg: 'rgba(16,185,129,0.08)',
+                costBorder: 'rgba(16,185,129,0.2)',
+                costColor: 'var(--success)',
+                badgeText: '● Local',
+                badgeClass: 'badge-local',
+            },
+            openai: {
+                chatflowId: 'a2326bd7-e1d8-4ed9-85ba-9a6cdf16dcc4',   // <-- CAMBIA ESTO
+                label: '⚡ OpenAI (cloud)',
+                llm: 'GPT-4o',
+                embeddings: 'Ada 3 Small',
+                cost: '~$0.01',
+                costLabel: 'Por consulta · API',
+                costBg: 'rgba(59,130,246,0.08)',
+                costBorder: 'rgba(59,130,246,0.2)',
+                costColor: 'var(--accent)',
+                badgeText: '☁️ Cloud',
+                badgeClass: 'badge-cloud',
+            },
+        };
+
+        const API_HOST = 'http://localhost:3000';
+        let currentProvider = 'ollama';
+        // ============================================================
+
+        const SOURCES = [
+            'Diabetes Mellitus Tipo 2',
+            'Depresión Mayor en Adultos',
+            'EPOC',
+            'Hipertensión Arterial',
+            'Prevención Cardiovascular',
+            'Cáncer de Mama',
+            'Ansiedad y Trastornos',
+            'Atención al Embarazo',
+        ];
+
+        // Rellenar sidebar
+        const sourceList = document.getElementById('sourceList');
+        SOURCES.forEach(s => {
+            const div = document.createElement('div');
+            div.className = 'source-item';
+            div.innerHTML = `<div class="source-dot"></div>${s}`;
+            sourceList.appendChild(div);
+        });
+
+        // === PROVIDER SWITCHING ===
+        function toggleProvider() {
+            setProvider(currentProvider === 'ollama' ? 'openai' : 'ollama');
+        }
+
+        function setProvider(provider) {
+            currentProvider = provider;
+            const cfg = CONFIG[provider];
+            const track = document.getElementById('toggleTrack');
+
+            // Toggle visual
+            if (provider === 'openai') {
+                track.classList.add('openai');
+                document.querySelector('.provider-label-ollama').className = 'provider-label provider-label-ollama inactive';
+                document.querySelector('.provider-label-openai').className = 'provider-label provider-label-openai active';
+            } else {
+                track.classList.remove('openai');
+                document.querySelector('.provider-label-ollama').className = 'provider-label provider-label-ollama active';
+                document.querySelector('.provider-label-openai').className = 'provider-label provider-label-openai inactive';
+            }
+
+            // Update sidebar
+            document.getElementById('techLLM').textContent = cfg.llm;
+            document.getElementById('techEmbed').textContent = cfg.embeddings;
+            document.getElementById('costValue').textContent = cfg.cost;
+            document.getElementById('costValue').style.color = cfg.costColor;
+            document.getElementById('costLabel').textContent = cfg.costLabel;
+            const costCard = document.getElementById('costCard');
+            costCard.style.background = cfg.costBg;
+            costCard.style.border = `1px solid ${cfg.costBorder}`;
+
+            // Update header badge
+            const badge = document.getElementById('badgeProvider');
+            badge.textContent = cfg.badgeText;
+            badge.className = `badge ${cfg.badgeClass}`;
+
+            // Update input hint
+            const indicator = document.getElementById('inputProviderLabel');
+            indicator.textContent = cfg.label;
+            indicator.style.color = provider === 'ollama' ? 'var(--success)' : 'var(--accent)';
+
+            // Show toast
+            showToast(provider === 'ollama'
+                ? '🦙 Cambiado a Ollama — respuestas 100% locales'
+                : '⚡ Cambiado a OpenAI — respuestas vía cloud'
+            , provider);
+        }
+
+        function showToast(message, provider) {
+            const toast = document.getElementById('switchToast');
+            toast.textContent = message;
+            toast.className = `switch-toast ${provider} show`;
+            setTimeout(() => { toast.classList.remove('show'); }, 2000);
+        }
+
+        // === CHAT LOGIC ===
+        function askQuestion(text) {
+            document.getElementById('chatInput').value = text;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const welcome = document.querySelector('.welcome-message');
+            if (welcome) welcome.remove();
+
+            addMessage(text, 'user');
+            input.value = '';
+
+            const provider = currentProvider;
+            const chatflowId = CONFIG[provider].chatflowId;
+            const typingId = showTyping(provider);
+
+            try {
+                const response = await fetch(`${API_HOST}/api/v1/prediction/${chatflowId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: text }),
+                });
+
+                const data = await response.json();
+                removeTyping(typingId);
+
+                const answer = data.text || data.answer || 'No he podido encontrar una respuesta en las guías clínicas.';
+                addMessage(answer, 'bot', provider);
+
+            } catch (error) {
+                removeTyping(typingId);
+                addMessage(`⚠️ Error al conectar con ${CONFIG[provider].label}. Verifica que Flowise está corriendo.`, 'bot', provider);
+            }
+        }
+
+        function addMessage(text, role, provider) {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message message-${role}`;
+
+            const avatar = role === 'bot' ? '🩺' : '👤';
+            const avatarClass = role === 'bot' ? 'avatar-bot' : 'avatar-user';
+
+            let providerTag = '';
+            if (role === 'bot' && provider) {
+                const color = provider === 'ollama' ? 'var(--success)' : 'var(--accent)';
+                const label = provider === 'ollama' ? '🦙 Ollama' : '⚡ OpenAI';
+                providerTag = `<div class="message-provider-tag" style="color:${color}">${label}</div>`;
+            }
+
+            div.innerHTML = `
+                <div class="message-avatar ${avatarClass}">${avatar}</div>
+                <div class="message-content">
+                    ${formatText(text)}
+                    ${providerTag}
+                </div>
+            `;
+
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function formatText(text) {
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function showTyping(provider) {
+            const messages = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            const id = 'typing-' + Date.now();
+            div.id = id;
+            div.className = 'message message-bot';
+            const color = provider === 'ollama' ? 'var(--success)' : 'var(--accent)';
+            const label = provider === 'ollama' ? '🦙 Ollama pensando...' : '⚡ OpenAI pensando...';
+            div.innerHTML = `
+                <div class="message-avatar avatar-bot">🩺</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                    <div class="message-provider-tag" style="color:${color}">${label}</div>
+                </div>
+            `;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+            return id;
+        }
+
+        function removeTyping(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+    </script>
+
+</body>
+</html>
