@@ -164,7 +164,9 @@ cada uno conserva su autoría y su licencia de origen:
 La URL exacta de cada documento está en `corpus_inventario.csv`. Si eres titular de algún
 documento y prefieres que no esté aquí, abre una *issue* y se retira.
 
-Los documentos de **NEXORA Salud** (capa 4), los scripts y la documentación son material
-docente de Javier Lougedo (UNIR).
+**Licencia de este repositorio:** los scripts, la documentación y los documentos ficticios de
+**NEXORA Salud** (capa 4) se publican bajo [CC0 1.0](LICENSE). La licencia CC0 **no se
+aplica** a los documentos de terceros de las capas 1 a 3, que mantienen la licencia y los
+derechos de sus autores.
 
 **Nada de este repositorio constituye consejo médico.**
