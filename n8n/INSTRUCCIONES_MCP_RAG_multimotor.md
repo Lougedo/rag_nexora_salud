@@ -133,7 +133,7 @@ con sobrepeso u obesidad.
 - **desde URL**, para poder indexar sin intervención (y para que tú puedas probarlo con
   `execute_workflow`). Lou va a publicarlos en GitHub. **Pregúntale las URL raw** antes de la
   fase 2. Formato previsible:
-  `https://raw.githubusercontent.com/Lougedo/rag_nexora_salud/main/ContentRAG_Salud/Clase_S4/<fichero>.pdf`
+  `https://raw.githubusercontent.com/Lougedo/rag_nexora_salud/main/clase_s4/<fichero>.pdf`
 
 ---
 
