@@ -15,7 +15,7 @@ Resumen operativo: inventario → documentos internos → descarga → indexaci�
   generar_corpus_nexora_salud.py ──> nexora_salud_interno/ ──┐     descargar_corpus.py
                                                              └────────────┤
                                                                           ▼
-                                                           nexora_salud_corpus/ (122 PDF)
+                                                           nexora_salud_corpus/ (984 PDF)
                                                                           │
                      ┌────────────────────────────────────────────────────┼─────────────────────┐
                      ▼                                                    ▼                     ▼
@@ -49,13 +49,19 @@ export CHROMA_API_KEY="..."        # solo con --mode cloud
 
 ### 1 · Inventario (opcional: ya viene hecho)
 
+Dos pasos: la base (capas 1-4) y la ampliación (capa 3 extra y capa 5).
+
 ```bash
-python herramientas/construir_inventario.py
+python herramientas/construir_inventario.py --salida base.csv   # solo la base
+python herramientas/ampliar_corpus.py                           # añade BOE, EUR-Lex, OMS, PLOS, Frontiers
+python herramientas/ampliar_corpus.py --podar                   # tras descargar, quita lo que falló
+python herramientas/estadisticas_corpus.py                      # recuento final
 ```
 
-Lee el catálogo público de GuíaSalud y añade la normativa y los documentos internos. Si
-GuíaSalud publica guías nuevas, aparecerán solas. **Revisa el CSV antes de descargar:** los
-números de documento cambian si cambia el catálogo.
+La base lee el catálogo público de GuíaSalud y añade la normativa y los documentos internos.
+La ampliación consulta las API del BOE, la OMS, PLOS y Europe PMC, y **solo añade filas al
+final**: los documentos existentes conservan su número. `construir_inventario.py` se niega a
+sobrescribir un inventario ampliado salvo con `--forzar`.
 
 ### 2 · Documentos internos (opcional: ya vienen hechos)
 
@@ -87,20 +93,20 @@ python indexar_corpus.py --chunk-size 1500 --chunk-overlap 300
 Los metadatos de cada trozo incluyen el id, el título, la capa, la categoría y la fuente del
 inventario: se pueden usar para filtrar (por ejemplo, excluir la capa 2 o los borradores).
 
-**Tiempos y costes orientativos** (corpus completo, unos 43.000 trozos y 8,6 millones de
+**Tiempos y costes orientativos** (corpus completo, unos 122.000 trozos y 24 millones de
 tokens):
 
 | Embeddings | Tiempo | Coste |
 |---|---|---|
-| OpenAI `text-embedding-3-small` | Minutos | Menos de 0,20 $ |
-| Ollama `nomic-embed-text` en un portátil | Horas | 0 € |
+| OpenAI `text-embedding-3-small` | Una hora o más | En torno a 0,50 $ |
+| Ollama `nomic-embed-text` en un portátil | Días | 0 € |
 
 ### 5 · Consulta
 
 - **Flowise:** `npx flowise start`, importa los JSON de `chatflows/`, asigna las
   credenciales y apunta el nodo Chroma a tu servidor (`chroma run --path ./chroma_db`).
 - **n8n:** ver [`../n8n/`](../n8n/). En clase se usan solo las dos guías de `clase_s4/`,
-  porque el almacén en memoria de n8n no está pensado para 43.000 trozos.
+  porque el almacén en memoria de n8n no está pensado para 122.000 trozos.
 
 ---
 

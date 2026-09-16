@@ -6,14 +6,14 @@ En clase, los alumnos montan un RAG con **dos guías** recortadas. Funciona, per
 falsa de la escala: dos documentos caben en cualquier chat.
 
 Este corpus existe para enseñar la **dimensión real** con la que trabaja un RAG en una
-organización sanitaria: más de cien documentos y catorce mil páginas, de fuentes distintas,
-con versiones que se solapan y se contradicen.
+organización sanitaria: casi mil documentos, 31.000 páginas y unos 24 millones de tokens,
+de fuentes distintas, en dos idiomas, con versiones que se solapan y se contradicen.
 
 ## Qué se ha buscado
 
-1. **Volumen suficiente para que no quepa en ninguna herramienta de uso general.** Supera
-   el contexto de cualquier modelo y el límite de fuentes de Gemini Notebook en sus planes
-   gratuito y Plus.
+1. **Volumen suficiente para que no quepa en ninguna herramienta de uso general.** Es unas
+   120 veces el contexto de un modelo de 200.000 tokens y supera el límite de fuentes de
+   Gemini Notebook en todos sus planes.
 2. **Fuentes reales y públicas.** Guías del SNS, legislación, estrategia del Ministerio,
    OMS, FDA y OCDE. Todas con URL de origen en el inventario.
 3. **Heterogeneidad.** Clínica, normativa y documentos internos. Es lo que obliga a pensar
@@ -28,8 +28,9 @@ con versiones que se solapan y se contradicen.
 |---|---|---|
 | 1 · Guías completas | 43 guías de práctica clínica del SNS | El núcleo: preguntas clínicas con respuesta citable |
 | 2 · Complementario | 44 resúmenes, herramientas, revisiones, borradores y traducciones | Ruido y duplicados; filtrar por metadatos |
-| 3 · Normativa y estrategia | 31 textos de la UE, España, OMS, FDA y OCDE | Preguntas regulatorias; mezcla con la parte clínica |
+| 3 · Normativa y estrategia | 207 textos: UE, 65 del BOE, Ministerio, 110 de la OMS, FDA y OCDE | Preguntas regulatorias; mezcla con la parte clínica |
 | 4 · Interno (ficticio) | 4 documentos de NEXORA Salud | Reglas propias que chocan con las fuentes externas |
+| 5 · Literatura abierta | 686 artículos CC BY de PLOS y Frontiers | Volumen, inglés, y preguntas cuya respuesta está repartida entre muchos artículos |
 
 ## Las contradicciones, una a una
 
@@ -42,6 +43,8 @@ con versiones que se solapan y se contradicen.
 | Política interna de vigencia | POL-DOC-002 prohíbe usar guías de más de 5 años sin revisión | Aplicarla a la GPC 429 |
 | Validación local | PRC-IA-003 y el caso del modelo de sepsis de Epic | Explicar por qué no basta la validación del proveedor |
 | Norma original frente a su modificación | AI Act (2024) y el informe del Ministerio sobre el Digital Omnibus | Dar la fecha vigente y citar la modificación |
+| PDF escaneados | Dos informes de la OMS sin capa de texto | Detectarlos y pasarles OCR antes de indexar |
+| Ruido de búsqueda | Normas del BOE sobre sanidad animal que entraron por la palabra «sanitario» | Filtrar por metadatos o revisar el inventario |
 
 ## Preguntas de prueba
 
@@ -59,5 +62,7 @@ con versiones que se solapan y se contradicen.
 - Hay documentos en inglés (OMS, FDA, OCDE y algunas traducciones). Es intencionado: los
   modelos de embeddings multilingües los recuperan igual.
 - Cuatro guías ya no están en el catálogo público y se incluyen desde una copia local.
+- La capa 5 está elegida por búsqueda automática: hay artículos poco relacionados con la
+  asistencia sanitaria. Es parte del ruido.
 - Los documentos internos son breves (6 páginas en total). Pesan poco, pero son los que más
   conflictos provocan.

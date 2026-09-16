@@ -14,6 +14,11 @@ Capas:
   3 = Normativa, estrategia y orientaciones sobre IA y salud digital
   4 = Documentación interna de NEXORA Salud (ficticia, generada)
 
+⚠️ Este script genera la BASE del inventario (capas 1-4, 122 documentos). La ampliación
+(capa 3 extra y capa 5) la añade herramientas/ampliar_corpus.py. Si regeneras la base, se
+pierde la ampliación: por eso el script se niega a sobrescribir un inventario más grande
+salvo con --forzar.
+
 Uso:
     python herramientas/construir_inventario.py            # descarga el catálogo
     python herramientas/construir_inventario.py --html gs.html
@@ -191,7 +196,16 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--html", help="HTML del catálogo ya descargado (opcional)")
     ap.add_argument("--salida", default="corpus_inventario.csv")
+    ap.add_argument("--forzar", action="store_true",
+                    help="sobrescribir aunque el inventario actual tenga más documentos")
     args = ap.parse_args()
+    destino = Path(args.salida)
+    if destino.exists() and not args.forzar:
+        with open(destino, encoding="utf-8") as f:
+            existentes = sum(1 for _ in f) - 1
+        if existentes > 130:
+            sys.exit(f"El inventario actual tiene {existentes} documentos (ampliado). "
+                     "Usa --salida otro.csv, o --forzar si de verdad quieres regenerarlo.")
 
     html = Path(args.html).read_text(encoding="utf-8", errors="ignore") if args.html \
         else requests.get(CATALOGO, headers=UA, timeout=60).text

@@ -1,12 +1,12 @@
 {
   "total": {
-    "docs": 122,
-    "paginas": 14059,
-    "caracteres": 34509421,
-    "bytes": 321599457,
-    "palabras_aprox": 5751570,
-    "tokens_aprox": 8627355,
-    "trozos_1000_200": 43136
+    "docs": 984,
+    "paginas": 31088,
+    "caracteres": 97422284,
+    "bytes": 2035613280,
+    "palabras_aprox": 16237047,
+    "tokens_aprox": 24355571,
+    "trozos_aprox": 121777
   },
   "por_capa": {
     "1": {
@@ -22,17 +22,94 @@
       "bytes": 74826915
     },
     "3": {
-      "docs": 31,
-      "paginas": 1928,
-      "caracteres": 6951581,
-      "bytes": 47203389
+      "docs": 207,
+      "paginas": 8148,
+      "caracteres": 23278437,
+      "bytes": 276268407
     },
     "4": {
       "docs": 4,
       "paginas": 6,
       "caracteres": 9481,
       "bytes": 17867
+    },
+    "5": {
+      "docs": 686,
+      "paginas": 10809,
+      "caracteres": 46586007,
+      "bytes": 1484948805
     }
   },
-  "avisos": []
+  "por_fuente": {
+    "BOE": {
+      "docs": 65,
+      "paginas": 1597,
+      "caracteres": 5777338,
+      "bytes": 20020029
+    },
+    "EUR-Lex": {
+      "docs": 23,
+      "paginas": 1288,
+      "caracteres": 5677992,
+      "bytes": 22396022
+    },
+    "FDA": {
+      "docs": 3,
+      "paginas": 59,
+      "caracteres": 181249,
+      "bytes": 1881671
+    },
+    "Frontiers (CC BY)": {
+      "docs": 356,
+      "paginas": 4884,
+      "caracteres": 25406573,
+      "bytes": 986285363
+    },
+    "GuiaSalud": {
+      "docs": 87,
+      "paginas": 12125,
+      "caracteres": 27548359,
+      "bytes": 274378201
+    },
+    "Ministerio de Sanidad": {
+      "docs": 5,
+      "paginas": 146,
+      "caracteres": 257816,
+      "bytes": 13815610
+    },
+    "NEXORA Salud": {
+      "docs": 4,
+      "paginas": 6,
+      "caracteres": 9481,
+      "bytes": 17867
+    },
+    "OCDE": {
+      "docs": 1,
+      "paginas": 41,
+      "caracteres": 130944,
+      "bytes": 7135050
+    },
+    "OMS": {
+      "docs": 110,
+      "paginas": 5017,
+      "caracteres": 11253098,
+      "bytes": 211020025
+    },
+    "PLOS (CC BY)": {
+      "docs": 330,
+      "paginas": 5925,
+      "caracteres": 21179434,
+      "bytes": 498663442
+    }
+  },
+  "supuestos": {
+    "caracteres_por_token": 4,
+    "caracteres_por_palabra": 6,
+    "trozo": 1000,
+    "solape": 200
+  },
+  "avisos": [
+    "casi sin texto 206_OMS_Global_review_of_the_role_of_artificial_intelligence_and_mac.pdf (0 caracteres en 80 págs)",
+    "casi sin texto 210_OMS_Global_review_of_the_role_of_artificial_intelligence_and_mac.pdf (0 caracteres en 32 págs)"
+  ]
 }
