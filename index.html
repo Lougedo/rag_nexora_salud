@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXORA Health · Asistente Clínico IA</title>
+    <title>NEXORA Health · RAG de guías clínicas (n8n)</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -540,6 +540,149 @@
             .provider-switch { padding: 4px 10px; }
             .header-badges { display: none; }
         }
+
+        /* === DEMO n8n: PASOS, FUENTES Y PREGUNTAS === */
+        .sidebar { width: 320px; }
+
+        .step-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .step-num {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .source-item small { color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+        .btn-secondary {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-accent);
+            background: var(--accent-glow);
+            color: var(--accent);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover { border-color: var(--accent); color: var(--text-primary); }
+
+        .question-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 6px;
+        }
+
+        .question-item:hover { border-color: var(--border-accent); }
+        .question-item .q { font-size: 12px; color: var(--text-primary); font-weight: 600; }
+        .question-item .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+
+        .header-btn {
+            padding: 6px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .header-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+
+        .sources {
+            margin-top: 10px;
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+            font-size: 12px;
+        }
+
+        .sources summary {
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .sources summary::-webkit-details-marker { display: none; }
+        .sources summary::before { content: '▸ '; }
+        .sources[open] summary::before { content: '▾ '; }
+
+        .source-chunk {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: var(--bg-chat);
+            border-left: 3px solid var(--accent);
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .source-chunk.t1 { border-left-color: #8b5cf6; }
+        .source-chunk.t2 { border-left-color: var(--warning); }
+        .source-chunk b { color: var(--text-primary); display: block; margin-bottom: 2px; }
+
+        .no-sources { margin-top: 10px; font-size: 12px; color: var(--warning); }
+
+        .poc-note { color: var(--warning); }
+
+        .welcome-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 0 auto 24px;
+            max-width: 620px;
+            text-align: left;
+        }
+
+        .welcome-step {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .welcome-step b { display: block; color: var(--text-primary); margin-bottom: 4px; font-size: 13px; }
+
+        @media (max-width: 768px) {
+            .welcome-steps { grid-template-columns: 1fr; }
+            .header-btn { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -550,110 +693,95 @@
             <div class="logo-text">NEXORA <span>Health</span></div>
         </div>
         <div class="header-right">
-            <!-- AI Provider Switch -->
             <div class="provider-switch">
-                <span class="provider-label provider-label-ollama active" onclick="setProvider('ollama')">
-                    🦙 Ollama
+                <span class="provider-label provider-label-openai active" onclick="setProvider('openai')">
+                    ⚡ OpenAI
                 </span>
                 <div class="toggle-track" id="toggleTrack" onclick="toggleProvider()">
                     <div class="toggle-thumb"></div>
                 </div>
-                <span class="provider-label provider-label-openai inactive" onclick="setProvider('openai')">
-                    OpenAI ⚡
+                <span class="provider-label provider-label-ollama inactive" onclick="setProvider('ollama')">
+                    Ollama 🦙
                 </span>
             </div>
+            <button class="header-btn" onclick="nuevaConversacion()">＋ Nueva conversación</button>
             <div class="header-badges">
-                <div class="badge badge-local" id="badgeProvider">● Local</div>
-                <div class="badge badge-rag">RAG · Guías SNS</div>
+                <div class="badge badge-cloud">n8n Cloud</div>
+                <div class="badge badge-rag">RAG · Qdrant</div>
             </div>
         </div>
     </header>
 
-    <!-- Switch notification toast -->
     <div class="switch-toast" id="switchToast"></div>
 
     <div class="app-container">
         <aside class="sidebar">
-            <div>
-                <h3>Base de conocimiento</h3>
-                <div class="source-list" id="sourceList"></div>
-            </div>
 
+            <!-- PASO 1 · INDEXAR -->
             <div>
-                <h3>Estadísticas</h3>
-                <div class="stats-grid">
+                <div class="step-title"><span class="step-num">1</span>Indexar (se hace una vez)</div>
+                <p class="step-text">
+                    Cada documento se convierte en texto, se corta en trozos y cada trozo se guarda
+                    en <b>Qdrant</b> (una base de datos vectorial) como una lista de números, su <em>embedding</em>.
+                </p>
+                <div class="source-list" id="sourceList"></div>
+                <div class="stats-grid" style="margin-top:8px">
                     <div class="stat-card">
-                        <div class="stat-value" id="statDocs">40</div>
+                        <div class="stat-value" id="statDocs">984</div>
                         <div class="stat-label">Documentos</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="statChunks">12.4K</div>
-                        <div class="stat-label">Fragmentos</div>
+                        <div class="stat-value" id="statChunks">—</div>
+                        <div class="stat-label">Trozos en Qdrant</div>
                     </div>
                 </div>
+                <a class="btn-secondary" href="https://lougedo.app.n8n.cloud/workflow/tmSaSu9yAWWQdRDy" target="_blank" rel="noopener">
+                    🔧 Ver el flujo de indexado en n8n
+                </a>
             </div>
 
+            <!-- PASO 2 · PREGUNTAR -->
             <div>
-                <h3>Stack técnico</h3>
+                <div class="step-title"><span class="step-num">2</span>Preguntar</div>
+                <p class="step-text">
+                    La pregunta se convierte en números con el <b>mismo</b> modelo del almacén,
+                    se buscan los trozos más parecidos y el redactor escribe la respuesta con ellos.
+                </p>
                 <div class="tech-stack">
                     <div class="tech-item">
                         <span class="tech-name">Orquestación</span>
-                        <span class="tech-value">Flowise</span>
+                        <span class="tech-value">n8n</span>
                     </div>
                     <div class="tech-item">
-                        <span class="tech-name">LLM</span>
-                        <span class="tech-value" id="techLLM">Phi-4 14B</span>
+                        <span class="tech-name">Redactor</span>
+                        <span class="tech-value" id="techLLM"></span>
                     </div>
                     <div class="tech-item">
                         <span class="tech-name">Embeddings</span>
-                        <span class="tech-value" id="techEmbed">Nomic Embed</span>
+                        <span class="tech-value" id="techEmbed"></span>
                     </div>
                     <div class="tech-item">
-                        <span class="tech-name">Vector DB</span>
-                        <span class="tech-value">ChromaDB</span>
+                        <span class="tech-name">Almacén</span>
+                        <span class="tech-value" id="techStore"></span>
                     </div>
                     <div class="tech-item">
-                        <span class="tech-name">Fuente</span>
-                        <span class="tech-value">GuíaSalud</span>
+                        <span class="tech-name">Trozos por búsqueda</span>
+                        <span class="tech-value">5</span>
                     </div>
                 </div>
+                <p class="step-text" id="providerNote" style="margin-top:8px"></p>
             </div>
 
+            <!-- PASO 3 · QUÉ PREGUNTARLE -->
             <div>
-                <h3>Coste</h3>
-                <div class="cost-card stat-card" id="costCard" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);">
-                    <div class="stat-value" id="costValue" style="color: var(--success);">0 €</div>
-                    <div class="stat-label" id="costLabel">100% Local · Gratis</div>
-                </div>
+                <div class="step-title"><span class="step-num">3</span>Qué preguntarle</div>
+                <div id="questionList"></div>
             </div>
         </aside>
 
         <main style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
             <div class="chat-container">
-                <div class="chat-messages" id="chatMessages">
-                    <div class="welcome-message">
-                        <div class="welcome-icon">🩺</div>
-                        <h2>Asistente de Guías Clínicas</h2>
-                        <p>
-                            Consulta las guías de práctica clínica del Sistema Nacional de Salud.
-                            Usa el switch de arriba para alternar entre IA local (Ollama) y cloud (OpenAI).
-                        </p>
-                        <div class="suggestion-chips">
-                            <div class="chip" onclick="askQuestion(this.textContent)">
-                                ¿Tratamiento inicial para diabetes tipo 2?
-                            </div>
-                            <div class="chip" onclick="askQuestion(this.textContent)">
-                                Criterios diagnósticos de depresión mayor
-                            </div>
-                            <div class="chip" onclick="askQuestion(this.textContent)">
-                                Recomendaciones de ejercicio para EPOC
-                            </div>
-                            <div class="chip" onclick="askQuestion(this.textContent)">
-                                ¿Cuándo derivar a especialista por hipertensión?
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div class="chat-messages" id="chatMessages"></div>
 
                 <div class="chat-input-area">
                     <div class="input-wrapper">
@@ -661,133 +789,180 @@
                             type="text"
                             class="chat-input"
                             id="chatInput"
-                            placeholder="Pregunta sobre las guías clínicas..."
+                            placeholder="Pregunta a la biblioteca de NEXORA Salud..."
                             onkeydown="if(event.key==='Enter') sendMessage()"
                         >
                         <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
                     </div>
                     <div class="input-hint">
-                        Usando <span class="provider-indicator" id="inputProviderLabel" style="color: var(--success);">🦙 Ollama (local)</span>
-                        · Las respuestas se basan en guías clínicas del SNS
+                        Redacta <span class="provider-indicator" id="inputProviderLabel"></span>
+                        · <span class="poc-note">Prototipo docente: no es consejo médico</span>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <template id="welcomeTemplate">
+        <div class="welcome-message">
+            <div class="welcome-icon">🩺</div>
+            <h2>Asistente de Guías Clínicas</h2>
+            <p>
+                Un «ChatGPT» que solo responde con la biblioteca de NEXORA Salud: guías del SNS,
+                normativa, documentos de la OMS, artículos científicos y protocolos internos.
+                Cambia de redactor con el interruptor y mira debajo de cada respuesta qué trozos ha leído.
+            </p>
+            <div class="welcome-steps">
+                <div class="welcome-step"><b>1 · Indexar</b>PDF → texto → trozos → números. Se hace una vez.</div>
+                <div class="welcome-step"><b>2 · Preguntar</b>Busca los 5 trozos más parecidos y redacta con ellos.</div>
+                <div class="welcome-step"><b>3 · Comprobar</b>¿Cita el documento correcto? ¿Ve las contradicciones? ¿Se inventa algo?</div>
+            </div>
+            <div class="suggestion-chips" id="welcomeChips"></div>
+        </div>
+    </template>
+
     <script>
         // ============================================================
-        // CONFIGURACIÓN — PON TUS CHATFLOW IDs AQUÍ
+        // CONFIGURACIÓN
+        // Chat publicado del flujo «IASP S4 · 2 · Preguntar a las guías».
+        // Si el flujo se despublica, esta página deja de responder.
         // ============================================================
+        const CHAT_URL = 'https://lougedo.app.n8n.cloud/webhook/3a4184ee-39e4-476a-9fe6-aed51c678410/chat';
+
         const CONFIG = {
-            ollama: {
-                chatflowId: 'add8e105-bc43-48fe-a3c6-7c6a6d004214',   // <-- CAMBIA ESTO
-                label: '🦙 Ollama (local)',
-                llm: 'Phi-4 14B',
-                embeddings: 'Nomic Embed',
-                cost: '0 €',
-                costLabel: '100% Local · Gratis',
-                costBg: 'rgba(16,185,129,0.08)',
-                costBorder: 'rgba(16,185,129,0.2)',
-                costColor: 'var(--success)',
-                badgeText: '● Local',
-                badgeClass: 'badge-local',
-            },
             openai: {
-                chatflowId: 'a2326bd7-e1d8-4ed9-85ba-9a6cdf16dcc4',   // <-- CAMBIA ESTO
-                label: '⚡ OpenAI (cloud)',
-                llm: 'GPT-4o',
-                embeddings: 'Ada 3 Small',
-                cost: '~$0.01',
-                costLabel: 'Por consulta · API',
-                costBg: 'rgba(59,130,246,0.08)',
-                costBorder: 'rgba(59,130,246,0.2)',
-                costColor: 'var(--accent)',
-                badgeText: '☁️ Cloud',
-                badgeClass: 'badge-cloud',
+                prefijo: '/openai',
+                label: '⚡ OpenAI',
+                llm: 'gpt-4o-mini',
+                embeddings: 'OpenAI · 1.536 números',
+                store: 'Qdrant · nexora_guias',
+                note: 'OpenAI redacta y también convierte en números: todo el recorrido es del mismo proveedor.',
+                color: 'var(--accent)',
+            },
+            ollama: {
+                prefijo: '/ollama',
+                label: '🦙 Ollama Cloud',
+                llm: 'gpt-oss:120b',
+                embeddings: 'OpenAI · 1.536 números',
+                store: 'Qdrant · nexora_guias',
+                note: 'Ollama Cloud no tiene modelos de embeddings: redacta Ollama, pero busca en el mismo almacén con los vectores de OpenAI.',
+                color: 'var(--success)',
             },
         };
 
-        const API_HOST = 'http://localhost:3000';
-        let currentProvider = 'ollama';
-        // ============================================================
+        // Capas del corpus NEXORA Salud (docs/NEXORA_Salud_Corpus_Diseno.md).
+        const CAPAS = {
+            '1': { nombre: 'Guías de práctica clínica del SNS', docs: 43, clase: 't1' },
+            '2': { nombre: 'Material complementario', docs: 44, clase: '' },
+            '3': { nombre: 'Normativa y estrategia (BOE, UE, OMS…)', docs: 207, clase: 't2' },
+            '4': { nombre: 'Documentos internos de NEXORA (ficticios)', docs: 4, clase: 't2' },
+            '5': { nombre: 'Artículos científicos (PLOS, Frontiers)', docs: 686, clase: '' },
+        };
 
-        const SOURCES = [
-            'Diabetes Mellitus Tipo 2',
-            'Depresión Mayor en Adultos',
-            'EPOC',
-            'Hipertensión Arterial',
-            'Prevención Cardiovascular',
-            'Cáncer de Mama',
-            'Ansiedad y Trastornos',
-            'Atención al Embarazo',
+        // Recuento real de trozos en Qdrant (actualizar al terminar el indexado).
+        const TROZOS_INDEXADOS = 128787;
+
+        const PREGUNTAS = [
+            { q: '¿Cuál es el objetivo de hemoglobina glicada en la diabetes tipo 1?',
+              hint: 'La guía de 2026 y el protocolo interno de 2024 no dicen lo mismo. ¿Lo detecta?' },
+            { q: '¿Se puede usar la guía de diabetes tipo 2 del SNS como referencia?',
+              hint: 'La guía es de 2008 y NEXORA tiene una política de vigencia. ¿Recupera las dos?' },
+            { q: '¿Cuándo empieza a aplicarse el AI Act a los productos sanitarios con IA?',
+              hint: 'El reglamento dice una fecha y el informe del Ministerio otra. ¿Cuál trae?' },
+            { q: '¿Qué exige NEXORA Salud antes de activar un modelo predictivo?',
+              hint: 'Está en un procedimiento interno. ¿Lo encuentra entre casi mil documentos?' },
+            { q: '¿Cuál es el tratamiento de la migraña?',
+              hint: 'No hay guía de migraña. Debe decir que no lo encuentra, sin inventar.' },
         ];
 
-        // Rellenar sidebar
-        const sourceList = document.getElementById('sourceList');
-        SOURCES.forEach(s => {
-            const div = document.createElement('div');
-            div.className = 'source-item';
-            div.innerHTML = `<div class="source-dot"></div>${s}`;
-            sourceList.appendChild(div);
-        });
+        let currentProvider = 'openai';
+        let sessionId = nuevoId();
+        let enviando = false;
 
-        // === PROVIDER SWITCHING ===
-        function toggleProvider() {
-            setProvider(currentProvider === 'ollama' ? 'openai' : 'ollama');
+        function nuevoId() {
+            try { return crypto.randomUUID(); }
+            catch { return 'sesion-' + Date.now() + '-' + Math.random().toString(36).slice(2); }
         }
 
-        function setProvider(provider) {
+        // === PANEL LATERAL ===
+        const sourceList = document.getElementById('sourceList');
+        Object.values(CAPAS).forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'source-item';
+            div.innerHTML = `<div class="source-dot"></div>${c.nombre}<small>${c.docs}</small>`;
+            sourceList.appendChild(div);
+        });
+        if (TROZOS_INDEXADOS) {
+            document.getElementById('statChunks').textContent = TROZOS_INDEXADOS.toLocaleString('es-ES');
+        }
+
+        const questionList = document.getElementById('questionList');
+        PREGUNTAS.forEach((p, i) => {
+            const div = document.createElement('div');
+            div.className = 'question-item';
+            div.innerHTML = `<div class="q">${i + 1}. ${esc(p.q)}</div><div class="hint">👀 ${esc(p.hint)}</div>`;
+            div.onclick = () => askQuestion(p.q);
+            questionList.appendChild(div);
+        });
+
+        function pintarBienvenida() {
+            const messages = document.getElementById('chatMessages');
+            messages.innerHTML = '';
+            messages.appendChild(document.getElementById('welcomeTemplate').content.cloneNode(true));
+            const chips = document.getElementById('welcomeChips');
+            PREGUNTAS.slice(0, 4).forEach(p => {
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.textContent = p.q;
+                chip.onclick = () => askQuestion(p.q);
+                chips.appendChild(chip);
+            });
+        }
+
+        function nuevaConversacion() {
+            sessionId = nuevoId();
+            pintarBienvenida();
+            showToast('Conversación nueva: el asistente ya no recuerda lo anterior', currentProvider);
+        }
+
+        // === CAMBIO DE REDACTOR ===
+        function toggleProvider() {
+            setProvider(currentProvider === 'openai' ? 'ollama' : 'openai', true);
+        }
+
+        function setProvider(provider, avisar = true) {
             currentProvider = provider;
             const cfg = CONFIG[provider];
             const track = document.getElementById('toggleTrack');
+            const esOpenai = provider === 'openai';
 
-            // Toggle visual
-            if (provider === 'openai') {
-                track.classList.add('openai');
-                document.querySelector('.provider-label-ollama').className = 'provider-label provider-label-ollama inactive';
-                document.querySelector('.provider-label-openai').className = 'provider-label provider-label-openai active';
-            } else {
-                track.classList.remove('openai');
-                document.querySelector('.provider-label-ollama').className = 'provider-label provider-label-ollama active';
-                document.querySelector('.provider-label-openai').className = 'provider-label provider-label-openai inactive';
-            }
+            track.classList.toggle('openai', !esOpenai);
+            track.style.background = esOpenai ? 'var(--accent)' : 'var(--success)';
+            document.querySelector('.provider-label-openai').className =
+                `provider-label provider-label-openai ${esOpenai ? 'active' : 'inactive'}`;
+            document.querySelector('.provider-label-ollama').className =
+                `provider-label provider-label-ollama ${esOpenai ? 'inactive' : 'active'}`;
 
-            // Update sidebar
             document.getElementById('techLLM').textContent = cfg.llm;
             document.getElementById('techEmbed').textContent = cfg.embeddings;
-            document.getElementById('costValue').textContent = cfg.cost;
-            document.getElementById('costValue').style.color = cfg.costColor;
-            document.getElementById('costLabel').textContent = cfg.costLabel;
-            const costCard = document.getElementById('costCard');
-            costCard.style.background = cfg.costBg;
-            costCard.style.border = `1px solid ${cfg.costBorder}`;
+            document.getElementById('techStore').textContent = cfg.store;
+            document.getElementById('providerNote').textContent = cfg.note;
 
-            // Update header badge
-            const badge = document.getElementById('badgeProvider');
-            badge.textContent = cfg.badgeText;
-            badge.className = `badge ${cfg.badgeClass}`;
-
-            // Update input hint
             const indicator = document.getElementById('inputProviderLabel');
-            indicator.textContent = cfg.label;
-            indicator.style.color = provider === 'ollama' ? 'var(--success)' : 'var(--accent)';
+            indicator.textContent = `${cfg.label} (${cfg.llm})`;
+            indicator.style.color = cfg.color;
 
-            // Show toast
-            showToast(provider === 'ollama'
-                ? '🦙 Cambiado a Ollama — respuestas 100% locales'
-                : '⚡ Cambiado a OpenAI — respuestas vía cloud'
-            , provider);
+            if (avisar) showToast(`Redacta ahora ${cfg.label} · busca en ${cfg.store}`, provider);
         }
 
         function showToast(message, provider) {
             const toast = document.getElementById('switchToast');
             toast.textContent = message;
             toast.className = `switch-toast ${provider} show`;
-            setTimeout(() => { toast.classList.remove('show'); }, 2000);
+            setTimeout(() => { toast.classList.remove('show'); }, 2200);
         }
 
-        // === CHAT LOGIC ===
+        // === CHAT ===
         function askQuestion(text) {
             document.getElementById('chatInput').value = text;
             sendMessage();
@@ -796,78 +971,134 @@
         async function sendMessage() {
             const input = document.getElementById('chatInput');
             const text = input.value.trim();
-            if (!text) return;
+            if (!text || enviando) return;
 
             const welcome = document.querySelector('.welcome-message');
             if (welcome) welcome.remove();
 
-            addMessage(text, 'user');
+            addUserMessage(text);
             input.value = '';
 
             const provider = currentProvider;
-            const chatflowId = CONFIG[provider].chatflowId;
             const typingId = showTyping(provider);
+            setEnviando(true);
+
+            const control = new AbortController();
+            const reloj = setTimeout(() => control.abort(), 120000);
 
             try {
-                const response = await fetch(`${API_HOST}/api/v1/prediction/${chatflowId}`, {
+                const response = await fetch(CHAT_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: text }),
+                    body: JSON.stringify({
+                        action: 'sendMessage',
+                        sessionId,
+                        chatInput: `${CONFIG[provider].prefijo} ${text}`,
+                    }),
+                    signal: control.signal,
                 });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                const data = await response.json();
+                let data = await response.json();
+                if (Array.isArray(data)) data = data[0] ?? {};
+
+                const answer = (data.respuesta ?? data.output ?? '').replace(/^\[[^\]]+\]\s*/, '').trim()
+                    || 'No he recibido respuesta del asistente.';
                 removeTyping(typingId);
-
-                const answer = data.text || data.answer || 'No he podido encontrar una respuesta en las guías clínicas.';
-                addMessage(answer, 'bot', provider);
+                addBotMessage(answer, provider, data.motor, data.fuentes ?? []);
 
             } catch (error) {
                 removeTyping(typingId);
-                addMessage(`⚠️ Error al conectar con ${CONFIG[provider].label}. Verifica que Flowise está corriendo.`, 'bot', provider);
+                const motivo = error.name === 'AbortError' ? 'ha tardado más de 2 minutos' : error.message;
+                addBotMessage(
+                    `⚠️ No he podido hablar con el asistente (${motivo}). Comprueba que el flujo «IASP S4 · 2» está publicado en n8n.`,
+                    provider, null, null
+                );
+            } finally {
+                clearTimeout(reloj);
+                setEnviando(false);
             }
         }
 
-        function addMessage(text, role, provider) {
-            const messages = document.getElementById('chatMessages');
+        function setEnviando(valor) {
+            enviando = valor;
+            document.getElementById('sendBtn').disabled = valor;
+        }
+
+        function addUserMessage(text) {
             const div = document.createElement('div');
-            div.className = `message message-${role}`;
+            div.className = 'message message-user';
+            div.innerHTML = `
+                <div class="message-avatar avatar-user">👤</div>
+                <div class="message-content">${esc(text)}</div>
+            `;
+            appendMessage(div);
+        }
 
-            const avatar = role === 'bot' ? '🩺' : '👤';
-            const avatarClass = role === 'bot' ? 'avatar-bot' : 'avatar-user';
+        function addBotMessage(text, provider, motor, fuentes) {
+            const cfg = CONFIG[provider];
+            const div = document.createElement('div');
+            div.className = 'message message-bot';
 
-            let providerTag = '';
-            if (role === 'bot' && provider) {
-                const color = provider === 'ollama' ? 'var(--success)' : 'var(--accent)';
-                const label = provider === 'ollama' ? '🦙 Ollama' : '⚡ OpenAI';
-                providerTag = `<div class="message-provider-tag" style="color:${color}">${label}</div>`;
+            let bloqueFuentes = '';
+            if (Array.isArray(fuentes)) {
+                bloqueFuentes = fuentes.length
+                    ? `<details class="sources">
+                           <summary>📄 ${fuentes.length} trozos recuperados de ${esc(cfg.store)}</summary>
+                           ${fuentes.map(pintarFuente).join('')}
+                       </details>`
+                    : `<div class="no-sources">⚠️ En esta respuesta no ha consultado las guías.</div>`;
             }
 
             div.innerHTML = `
-                <div class="message-avatar ${avatarClass}">${avatar}</div>
+                <div class="message-avatar avatar-bot">🩺</div>
                 <div class="message-content">
                     ${formatText(text)}
-                    ${providerTag}
+                    ${bloqueFuentes}
+                    <div class="message-provider-tag" style="color:${cfg.color}">${esc(motor || cfg.label)} · ${esc(cfg.llm)}</div>
                 </div>
             `;
+            appendMessage(div);
+        }
 
+        function pintarFuente(f) {
+            const capa = CAPAS[f.capa];
+            const titulo = f.titulo || f.fichero;
+            const pagina = f.pagina ? ` · pág. ${f.pagina}` : '';
+            const etiqueta = capa ? `<small style="color:var(--text-muted)">${esc(capa.nombre)}</small><br>` : '';
+            return `<div class="source-chunk ${capa ? capa.clase : ''}">
+                        <b>${esc(titulo)}${pagina}</b>
+                        ${etiqueta}«${esc(f.extracto)}…»
+                    </div>`;
+        }
+
+        function appendMessage(div) {
+            const messages = document.getElementById('chatMessages');
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
         }
 
+        function esc(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
         function formatText(text) {
-            return text
+            return esc(text)
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/【[^】]*】/g, '')
                 .replace(/\n/g, '<br>');
         }
 
         function showTyping(provider) {
-            const messages = document.getElementById('chatMessages');
+            const cfg = CONFIG[provider];
             const div = document.createElement('div');
             const id = 'typing-' + Date.now();
             div.id = id;
             div.className = 'message message-bot';
-            const color = provider === 'ollama' ? 'var(--success)' : 'var(--accent)';
-            const label = provider === 'ollama' ? '🦙 Ollama pensando...' : '⚡ OpenAI pensando...';
             div.innerHTML = `
                 <div class="message-avatar avatar-bot">🩺</div>
                 <div class="message-content">
@@ -876,11 +1107,10 @@
                         <div class="typing-dot"></div>
                         <div class="typing-dot"></div>
                     </div>
-                    <div class="message-provider-tag" style="color:${color}">${label}</div>
+                    <div class="message-provider-tag" style="color:${cfg.color}">Buscando en ${esc(cfg.store)} y redactando con ${esc(cfg.label)}…</div>
                 </div>
             `;
-            messages.appendChild(div);
-            messages.scrollTop = messages.scrollHeight;
+            appendMessage(div);
             return id;
         }
 
@@ -888,6 +1118,9 @@
             const el = document.getElementById(id);
             if (el) el.remove();
         }
+
+        setProvider('openai', false);
+        pintarBienvenida();
     </script>
 
 </body>
