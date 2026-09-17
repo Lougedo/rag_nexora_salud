@@ -120,6 +120,11 @@ de embeddings) se construye con el MCP de n8n siguiendo
 > **Ollama Cloud no ofrece modelos de embeddings**, solo de chat. En el montaje multimotor,
 > Ollama redacta y los vectores los pone otro proveedor.
 
+**Corpus completo en la nube.** Los 984 documentos (128.787 trozos) están indexados en
+Qdrant Cloud desde n8n, y [`index_n8n.html`](index_n8n.html) es la interfaz tipo chat que
+lo consulta y enseña las fuentes de cada respuesta. Qué hay montado, cómo se reindexa y
+qué falló por el camino: [`docs/RAG_N8N_QDRANT.md`](docs/RAG_N8N_QDRANT.md).
+
 ### 2 · Flowise + ChromaDB en local (sesión 5)
 
 ```bash

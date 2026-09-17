@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA Health · RAG de guías clínicas (n8n)</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1a;
+            --bg-card: #111827;
+            --bg-chat: #0d1321;
+            --bg-input: #1a2236;
+            --bg-user-msg: #2563eb;
+            --bg-bot-msg: #1e293b;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #1e293b;
+            --border-accent: #2563eb33;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === HEADER === */
+        header {
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: rgba(10, 15, 26, 0.8);
+            backdrop-filter: blur(20px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-text span {
+            color: var(--accent);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 8px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-local {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-cloud {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .badge-rag {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid var(--border-accent);
+        }
+
+        /* === AI PROVIDER SWITCH === */
+        .provider-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px 14px;
+        }
+
+        .provider-label {
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.3s;
+            user-select: none;
+        }
+
+        .provider-label.active { color: var(--text-primary); }
+        .provider-label.inactive { color: var(--text-muted); }
+
+        .provider-label-ollama.active { color: var(--success); }
+        .provider-label-openai.active { color: var(--accent); }
+
+        .toggle-track {
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+            background: var(--success);
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s;
+        }
+
+        .toggle-track.openai {
+            background: var(--accent);
+        }
+
+        .toggle-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .toggle-track.openai .toggle-thumb {
+            transform: translateX(20px);
+        }
+
+        /* === MAIN LAYOUT === */
+        .app-container {
+            display: flex;
+            flex: 1;
+            margin-top: 69px;
+            height: calc(100vh - 69px);
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            width: 280px;
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+            background: rgba(17, 24, 39, 0.5);
+        }
+
+        .sidebar h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .source-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .source-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .source-item:hover {
+            border-color: var(--border-accent);
+            color: var(--text-primary);
+        }
+
+        .source-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            flex-shrink: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .tech-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .tech-item .tech-name { color: var(--text-secondary); }
+        .tech-item .tech-value { color: var(--text-primary); font-weight: 600; transition: color 0.3s; }
+
+        .cost-card {
+            text-align: center;
+            padding: 14px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        /* === CHAT AREA === */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+            width: 100%;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 85%;
+            animation: messageIn 0.3s ease-out;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-user { align-self: flex-end; flex-direction: row-reverse; }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .avatar-bot { background: linear-gradient(135deg, var(--accent), #8b5cf6); }
+        .avatar-user { background: #374151; }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .message-bot .message-content {
+            background: var(--bg-bot-msg);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-user .message-content {
+            background: var(--bg-user-msg);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-provider-tag {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 6px;
+            opacity: 0.6;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px 40px;
+        }
+
+        .welcome-icon { font-size: 48px; margin-bottom: 16px; }
+
+        .welcome-message h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .welcome-message p {
+            color: var(--text-secondary);
+            font-size: 15px;
+            max-width: 480px;
+            margin: 0 auto 28px;
+            line-height: 1.6;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .chip {
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chip:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+            background: var(--accent-glow);
+        }
+
+        /* === INPUT AREA === */
+        .chat-input-area {
+            padding: 16px 0 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 6px 6px 6px 18px;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .chat-input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            padding: 8px 0;
+        }
+
+        .chat-input::placeholder { color: var(--text-muted); }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--accent);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover { background: #2563eb; transform: scale(1.05); }
+        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .input-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .input-hint .provider-indicator {
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        /* === TYPING INDICATOR === */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: typingBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        /* === SWITCH NOTIFICATION === */
+        .switch-toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+
+        .switch-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .switch-toast.ollama {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .switch-toast.openai {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .chat-container { padding: 0 16px; }
+            .provider-switch { padding: 4px 10px; }
+            .header-badges { display: none; }
+        }
+
+        /* === DEMO n8n: PASOS, FUENTES Y PREGUNTAS === */
+        .sidebar { width: 320px; }
+
+        .step-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .step-num {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .source-item small { color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+
+        .btn-secondary {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-accent);
+            background: var(--accent-glow);
+            color: var(--accent);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover { border-color: var(--accent); color: var(--text-primary); }
+
+        .question-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 6px;
+        }
+
+        .question-item:hover { border-color: var(--border-accent); }
+        .question-item .q { font-size: 12px; color: var(--text-primary); font-weight: 600; }
+        .question-item .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+
+        .header-btn {
+            padding: 6px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .header-btn:hover { color: var(--text-primary); border-color: var(--accent); }
+
+        .sources {
+            margin-top: 10px;
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+            font-size: 12px;
+        }
+
+        .sources summary {
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .sources summary::-webkit-details-marker { display: none; }
+        .sources summary::before { content: '▸ '; }
+        .sources[open] summary::before { content: '▾ '; }
+
+        .source-chunk {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: var(--bg-chat);
+            border-left: 3px solid var(--accent);
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .source-chunk.t1 { border-left-color: #8b5cf6; }
+        .source-chunk.t2 { border-left-color: var(--warning); }
+        .source-chunk b { color: var(--text-primary); display: block; margin-bottom: 2px; }
+
+        .no-sources { margin-top: 10px; font-size: 12px; color: var(--warning); }
+
+        .poc-note { color: var(--warning); }
+
+        .welcome-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 0 auto 24px;
+            max-width: 620px;
+            text-align: left;
+        }
+
+        .welcome-step {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .welcome-step b { display: block; color: var(--text-primary); margin-bottom: 4px; font-size: 13px; }
+
+        @media (max-width: 768px) {
+            .welcome-steps { grid-template-columns: 1fr; }
+            .header-btn { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">🏥</div>
+            <div class="logo-text">NEXORA <span>Health</span></div>
+        </div>
+        <div class="header-right">
+            <div class="provider-switch">
+                <span class="provider-label provider-label-openai active" onclick="setProvider('openai')">
+                    ⚡ OpenAI
+                </span>
+                <div class="toggle-track" id="toggleTrack" onclick="toggleProvider()">
+                    <div class="toggle-thumb"></div>
+                </div>
+                <span class="provider-label provider-label-ollama inactive" onclick="setProvider('ollama')">
+                    Ollama 🦙
+                </span>
+            </div>
+            <button class="header-btn" onclick="nuevaConversacion()">＋ Nueva conversación</button>
+            <div class="header-badges">
+                <div class="badge badge-cloud">n8n Cloud</div>
+                <div class="badge badge-rag">RAG · Qdrant</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="switch-toast" id="switchToast"></div>
+
+    <div class="app-container">
+        <aside class="sidebar">
+
+            <!-- PASO 1 · INDEXAR -->
+            <div>
+                <div class="step-title"><span class="step-num">1</span>Indexar (se hace una vez)</div>
+                <p class="step-text">
+                    Cada documento se convierte en texto, se corta en trozos y cada trozo se guarda
+                    en <b>Qdrant</b> (una base de datos vectorial) como una lista de números, su <em>embedding</em>.
+                </p>
+                <div class="source-list" id="sourceList"></div>
+                <div class="stats-grid" style="margin-top:8px">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statDocs">984</div>
+                        <div class="stat-label">Documentos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statChunks">—</div>
+                        <div class="stat-label">Trozos en Qdrant</div>
+                    </div>
+                </div>
+                <a class="btn-secondary" href="https://lougedo.app.n8n.cloud/workflow/tmSaSu9yAWWQdRDy" target="_blank" rel="noopener">
+                    🔧 Ver el flujo de indexado en n8n
+                </a>
+            </div>
+
+            <!-- PASO 2 · PREGUNTAR -->
+            <div>
+                <div class="step-title"><span class="step-num">2</span>Preguntar</div>
+                <p class="step-text">
+                    La pregunta se convierte en números con el <b>mismo</b> modelo del almacén,
+                    se buscan los trozos más parecidos y el redactor escribe la respuesta con ellos.
+                </p>
+                <div class="tech-stack">
+                    <div class="tech-item">
+                        <span class="tech-name">Orquestación</span>
+                        <span class="tech-value">n8n</span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-name">Redactor</span>
+                        <span class="tech-value" id="techLLM"></span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-name">Embeddings</span>
+                        <span class="tech-value" id="techEmbed"></span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-name">Almacén</span>
+                        <span class="tech-value" id="techStore"></span>
+                    </div>
+                    <div class="tech-item">
+                        <span class="tech-name">Trozos por búsqueda</span>
+                        <span class="tech-value">5</span>
+                    </div>
+                </div>
+                <p class="step-text" id="providerNote" style="margin-top:8px"></p>
+            </div>
+
+            <!-- PASO 3 · QUÉ PREGUNTARLE -->
+            <div>
+                <div class="step-title"><span class="step-num">3</span>Qué preguntarle</div>
+                <div id="questionList"></div>
+            </div>
+        </aside>
+
+        <main style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages"></div>
+
+                <div class="chat-input-area">
+                    <div class="input-wrapper">
+                        <input
+                            type="text"
+                            class="chat-input"
+                            id="chatInput"
+                            placeholder="Pregunta a la biblioteca de NEXORA Salud..."
+                            onkeydown="if(event.key==='Enter') sendMessage()"
+                        >
+                        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+                    </div>
+                    <div class="input-hint">
+                        Redacta <span class="provider-indicator" id="inputProviderLabel"></span>
+                        · <span class="poc-note">Prototipo docente: no es consejo médico</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <template id="welcomeTemplate">
+        <div class="welcome-message">
+            <div class="welcome-icon">🩺</div>
+            <h2>Asistente de Guías Clínicas</h2>
+            <p>
+                Un «ChatGPT» que solo responde con la biblioteca de NEXORA Salud: guías del SNS,
+                normativa, documentos de la OMS, artículos científicos y protocolos internos.
+                Cambia de redactor con el interruptor y mira debajo de cada respuesta qué trozos ha leído.
+            </p>
+            <div class="welcome-steps">
+                <div class="welcome-step"><b>1 · Indexar</b>PDF → texto → trozos → números. Se hace una vez.</div>
+                <div class="welcome-step"><b>2 · Preguntar</b>Busca los 5 trozos más parecidos y redacta con ellos.</div>
+                <div class="welcome-step"><b>3 · Comprobar</b>¿Cita el documento correcto? ¿Ve las contradicciones? ¿Se inventa algo?</div>
+            </div>
+            <div class="suggestion-chips" id="welcomeChips"></div>
+        </div>
+    </template>
+
+    <script>
+        // ============================================================
+        // CONFIGURACIÓN
+        // Chat publicado del flujo «IASP S4 · 2 · Preguntar a las guías».
+        // Si el flujo se despublica, esta página deja de responder.
+        // ============================================================
+        const CHAT_URL = 'https://lougedo.app.n8n.cloud/webhook/3a4184ee-39e4-476a-9fe6-aed51c678410/chat';
+
+        const CONFIG = {
+            openai: {
+                prefijo: '/openai',
+                label: '⚡ OpenAI',
+                llm: 'gpt-4o-mini',
+                embeddings: 'OpenAI · 1.536 números',
+                store: 'Qdrant · nexora_guias',
+                note: 'OpenAI redacta y también convierte en números: todo el recorrido es del mismo proveedor.',
+                color: 'var(--accent)',
+            },
+            ollama: {
+                prefijo: '/ollama',
+                label: '🦙 Ollama Cloud',
+                llm: 'gpt-oss:120b',
+                embeddings: 'OpenAI · 1.536 números',
+                store: 'Qdrant · nexora_guias',
+                note: 'Ollama Cloud no tiene modelos de embeddings: redacta Ollama, pero busca en el mismo almacén con los vectores de OpenAI.',
+                color: 'var(--success)',
+            },
+        };
+
+        // Capas del corpus NEXORA Salud (docs/NEXORA_Salud_Corpus_Diseno.md).
+        const CAPAS = {
+            '1': { nombre: 'Guías de práctica clínica del SNS', docs: 43, clase: 't1' },
+            '2': { nombre: 'Material complementario', docs: 44, clase: '' },
+            '3': { nombre: 'Normativa y estrategia (BOE, UE, OMS…)', docs: 207, clase: 't2' },
+            '4': { nombre: 'Documentos internos de NEXORA (ficticios)', docs: 4, clase: 't2' },
+            '5': { nombre: 'Artículos científicos (PLOS, Frontiers)', docs: 686, clase: '' },
+        };
+
+        // Recuento real de trozos en Qdrant (actualizar al terminar el indexado).
+        const TROZOS_INDEXADOS = 128787;
+
+        const PREGUNTAS = [
+            { q: '¿Cuál es el objetivo de hemoglobina glicada en la diabetes tipo 1?',
+              hint: 'La guía de 2026 y el protocolo interno de 2024 no dicen lo mismo. ¿Lo detecta?' },
+            { q: '¿Se puede usar la guía de diabetes tipo 2 del SNS como referencia?',
+              hint: 'La guía es de 2008 y NEXORA tiene una política de vigencia. ¿Recupera las dos?' },
+            { q: '¿Cuándo empieza a aplicarse el AI Act a los productos sanitarios con IA?',
+              hint: 'El reglamento dice una fecha y el informe del Ministerio otra. ¿Cuál trae?' },
+            { q: '¿Qué exige NEXORA Salud antes de activar un modelo predictivo?',
+              hint: 'Está en un procedimiento interno. ¿Lo encuentra entre casi mil documentos?' },
+            { q: '¿Cuál es el tratamiento de la migraña?',
+              hint: 'No hay guía de migraña. Debe decir que no lo encuentra, sin inventar.' },
+        ];
+
+        let currentProvider = 'openai';
+        let sessionId = nuevoId();
+        let enviando = false;
+
+        function nuevoId() {
+            try { return crypto.randomUUID(); }
+            catch { return 'sesion-' + Date.now() + '-' + Math.random().toString(36).slice(2); }
+        }
+
+        // === PANEL LATERAL ===
+        const sourceList = document.getElementById('sourceList');
+        Object.values(CAPAS).forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'source-item';
+            div.innerHTML = `<div class="source-dot"></div>${c.nombre}<small>${c.docs}</small>`;
+            sourceList.appendChild(div);
+        });
+        if (TROZOS_INDEXADOS) {
+            document.getElementById('statChunks').textContent = TROZOS_INDEXADOS.toLocaleString('es-ES');
+        }
+
+        const questionList = document.getElementById('questionList');
+        PREGUNTAS.forEach((p, i) => {
+            const div = document.createElement('div');
+            div.className = 'question-item';
+            div.innerHTML = `<div class="q">${i + 1}. ${esc(p.q)}</div><div class="hint">👀 ${esc(p.hint)}</div>`;
+            div.onclick = () => askQuestion(p.q);
+            questionList.appendChild(div);
+        });
+
+        function pintarBienvenida() {
+            const messages = document.getElementById('chatMessages');
+            messages.innerHTML = '';
+            messages.appendChild(document.getElementById('welcomeTemplate').content.cloneNode(true));
+            const chips = document.getElementById('welcomeChips');
+            PREGUNTAS.slice(0, 4).forEach(p => {
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.textContent = p.q;
+                chip.onclick = () => askQuestion(p.q);
+                chips.appendChild(chip);
+            });
+        }
+
+        function nuevaConversacion() {
+            sessionId = nuevoId();
+            pintarBienvenida();
+            showToast('Conversación nueva: el asistente ya no recuerda lo anterior', currentProvider);
+        }
+
+        // === CAMBIO DE REDACTOR ===
+        function toggleProvider() {
+            setProvider(currentProvider === 'openai' ? 'ollama' : 'openai', true);
+        }
+
+        function setProvider(provider, avisar = true) {
+            currentProvider = provider;
+            const cfg = CONFIG[provider];
+            const track = document.getElementById('toggleTrack');
+            const esOpenai = provider === 'openai';
+
+            track.classList.toggle('openai', !esOpenai);
+            track.style.background = esOpenai ? 'var(--accent)' : 'var(--success)';
+            document.querySelector('.provider-label-openai').className =
+                `provider-label provider-label-openai ${esOpenai ? 'active' : 'inactive'}`;
+            document.querySelector('.provider-label-ollama').className =
+                `provider-label provider-label-ollama ${esOpenai ? 'inactive' : 'active'}`;
+
+            document.getElementById('techLLM').textContent = cfg.llm;
+            document.getElementById('techEmbed').textContent = cfg.embeddings;
+            document.getElementById('techStore').textContent = cfg.store;
+            document.getElementById('providerNote').textContent = cfg.note;
+
+            const indicator = document.getElementById('inputProviderLabel');
+            indicator.textContent = `${cfg.label} (${cfg.llm})`;
+            indicator.style.color = cfg.color;
+
+            if (avisar) showToast(`Redacta ahora ${cfg.label} · busca en ${cfg.store}`, provider);
+        }
+
+        function showToast(message, provider) {
+            const toast = document.getElementById('switchToast');
+            toast.textContent = message;
+            toast.className = `switch-toast ${provider} show`;
+            setTimeout(() => { toast.classList.remove('show'); }, 2200);
+        }
+
+        // === CHAT ===
+        function askQuestion(text) {
+            document.getElementById('chatInput').value = text;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text || enviando) return;
+
+            const welcome = document.querySelector('.welcome-message');
+            if (welcome) welcome.remove();
+
+            addUserMessage(text);
+            input.value = '';
+
+            const provider = currentProvider;
+            const typingId = showTyping(provider);
+            setEnviando(true);
+
+            const control = new AbortController();
+            const reloj = setTimeout(() => control.abort(), 120000);
+
+            try {
+                const response = await fetch(CHAT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'sendMessage',
+                        sessionId,
+                        chatInput: `${CONFIG[provider].prefijo} ${text}`,
+                    }),
+                    signal: control.signal,
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                let data = await response.json();
+                if (Array.isArray(data)) data = data[0] ?? {};
+
+                const answer = (data.respuesta ?? data.output ?? '').replace(/^\[[^\]]+\]\s*/, '').trim()
+                    || 'No he recibido respuesta del asistente.';
+                removeTyping(typingId);
+                addBotMessage(answer, provider, data.motor, data.fuentes ?? []);
+
+            } catch (error) {
+                removeTyping(typingId);
+                const motivo = error.name === 'AbortError' ? 'ha tardado más de 2 minutos' : error.message;
+                addBotMessage(
+                    `⚠️ No he podido hablar con el asistente (${motivo}). Comprueba que el flujo «IASP S4 · 2» está publicado en n8n.`,
+                    provider, null, null
+                );
+            } finally {
+                clearTimeout(reloj);
+                setEnviando(false);
+            }
+        }
+
+        function setEnviando(valor) {
+            enviando = valor;
+            document.getElementById('sendBtn').disabled = valor;
+        }
+
+        function addUserMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'message message-user';
+            div.innerHTML = `
+                <div class="message-avatar avatar-user">👤</div>
+                <div class="message-content">${esc(text)}</div>
+            `;
+            appendMessage(div);
+        }
+
+        function addBotMessage(text, provider, motor, fuentes) {
+            const cfg = CONFIG[provider];
+            const div = document.createElement('div');
+            div.className = 'message message-bot';
+
+            let bloqueFuentes = '';
+            if (Array.isArray(fuentes)) {
+                bloqueFuentes = fuentes.length
+                    ? `<details class="sources">
+                           <summary>📄 ${fuentes.length} trozos recuperados de ${esc(cfg.store)}</summary>
+                           ${fuentes.map(pintarFuente).join('')}
+                       </details>`
+                    : `<div class="no-sources">⚠️ En esta respuesta no ha consultado las guías.</div>`;
+            }
+
+            div.innerHTML = `
+                <div class="message-avatar avatar-bot">🩺</div>
+                <div class="message-content">
+                    ${formatText(text)}
+                    ${bloqueFuentes}
+                    <div class="message-provider-tag" style="color:${cfg.color}">${esc(motor || cfg.label)} · ${esc(cfg.llm)}</div>
+                </div>
+            `;
+            appendMessage(div);
+        }
+
+        function pintarFuente(f) {
+            const capa = CAPAS[f.capa];
+            const titulo = f.titulo || f.fichero;
+            const pagina = f.pagina ? ` · pág. ${f.pagina}` : '';
+            const etiqueta = capa ? `<small style="color:var(--text-muted)">${esc(capa.nombre)}</small><br>` : '';
+            return `<div class="source-chunk ${capa ? capa.clase : ''}">
+                        <b>${esc(titulo)}${pagina}</b>
+                        ${etiqueta}«${esc(f.extracto)}…»
+                    </div>`;
+        }
+
+        function appendMessage(div) {
+            const messages = document.getElementById('chatMessages');
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function esc(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatText(text) {
+            return esc(text)
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/【[^】]*】/g, '')
+                .replace(/\n/g, '<br>');
+        }
+
+        function showTyping(provider) {
+            const cfg = CONFIG[provider];
+            const div = document.createElement('div');
+            const id = 'typing-' + Date.now();
+            div.id = id;
+            div.className = 'message message-bot';
+            div.innerHTML = `
+                <div class="message-avatar avatar-bot">🩺</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                    <div class="message-provider-tag" style="color:${cfg.color}">Buscando en ${esc(cfg.store)} y redactando con ${esc(cfg.label)}…</div>
+                </div>
+            `;
+            appendMessage(div);
+            return id;
+        }
+
+        function removeTyping(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        setProvider('openai', false);
+        pintarBienvenida();
+    </script>
+
+</body>
+</html>
