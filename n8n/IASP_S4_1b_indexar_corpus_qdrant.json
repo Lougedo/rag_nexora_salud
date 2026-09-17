@@ -1,0 +1,188 @@
+{
+  "name": "IASP S4 · 1b · Indexar el corpus en Qdrant",
+  "nodes": [
+    {
+      "id": "58592a98-e0a9-4b85-b3aa-c28f06d1c9f6",
+      "name": "Indexar una tanda del corpus",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        384
+      ],
+      "parameters": {
+        "formTitle": "Indexar el corpus NEXORA Salud en Qdrant",
+        "formDescription": "Indica el rango de documentos del inventario (id del 1 al 987). Se indexan uno a uno.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Desde (id)",
+              "fieldName": "desde",
+              "fieldType": "number",
+              "defaultValue": "1",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Hasta (id)",
+              "fieldName": "hasta",
+              "fieldType": "number",
+              "defaultValue": "43",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "onReceived",
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Indexar",
+          "path": "nexora-corpus-dede0c",
+          "respondWithOptions": {
+            "values": {
+              "respondWith": "text",
+              "formSubmittedText": "Indexando en segundo plano. Mira el progreso en Ejecuciones."
+            }
+          }
+        }
+      },
+      "webhookId": "14adc43b-f07b-4e05-b266-485e2d0a6472"
+    },
+    {
+      "id": "404c98f8-7404-4ff5-bcb3-dbdf1c57b7c5",
+      "name": "Leer el inventario",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        384
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://raw.githubusercontent.com/Lougedo/rag_nexora_salud/main/corpus_inventario.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "csv"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "de3ce4a6-adac-4744-b6f7-9ecd3ba292f1",
+      "name": "Documentos de la tanda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        384
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Lee el inventario (CSV separado por ;) y se queda con los documentos del rango pedido.\nconst f = $('Indexar una tanda del corpus').first().json;\nconst desde = Number(f.desde) || 1;\nconst hasta = Number(f.hasta) || desde;\nconst texto = String($input.first().json.csv ?? '');\n\nconst parsear = (linea) => {\n  const campos = [];\n  let actual = '';\n  let entreComillas = false;\n  for (let i = 0; i < linea.length; i++) {\n    const c = linea[i];\n    if (entreComillas) {\n      if (c === '\"' && linea[i + 1] === '\"') { actual += '\"'; i++; }\n      else if (c === '\"') entreComillas = false;\n      else actual += c;\n    } else if (c === '\"') entreComillas = true;\n    else if (c === ';') { campos.push(actual); actual = ''; }\n    else actual += c;\n  }\n  campos.push(actual);\n  return campos;\n};\n\nconst lineas = texto.split(/\\r?\\n/).filter((l) => l.trim());\nconst cabecera = parsear(lineas.shift()).map((k) => k.trim().replace(/^﻿/, ''));\nconst base = 'https://raw.githubusercontent.com/Lougedo/rag_nexora_salud/main/nexora_salud_corpus/';\n\nconst docs = lineas\n  .map((l) => {\n    const v = parsear(l);\n    return Object.fromEntries(cabecera.map((k, i) => [k, (v[i] ?? '').trim()]));\n  })\n  .filter((d) => Number(d.id) >= desde && Number(d.id) <= hasta)\n  .map((d) => ({ json: {\n    id: d.id,\n    fichero: d.filename,\n    titulo: d.titulo,\n    capa: d.capa,\n    categoria: d.categoria,\n    fuente: d.fuente,\n    url: base + encodeURIComponent(d.filename),\n  } }));\n\nif (!docs.length) throw new Error(`No hay documentos entre ${desde} y ${hasta}`);\nreturn docs;"
+      }
+    },
+    {
+      "id": "7d08d9a2-80c1-40be-b782-1b99f5c9d10d",
+      "name": "Resumen de la tanda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        80
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Resumen de la tanda: documentos, trozos guardados y errores.\nconst docs = $('Documentos de la tanda').all().map((i) => i.json);\nconst filas = $input.all().map((i, n) => ({ ...docs[n], ...i.json }));\nconst trozos = filas.reduce((s, f) => s + (Number(f.trozos) || 0), 0);\nconst errores = filas\n  .filter((f) => f.error || !f.trozos)\n  .map((f) => `${f.id} · ${f.titulo}: ${typeof f.error === 'object' ? (f.error.message ?? JSON.stringify(f.error)) : (f.error || 'sin trozos')}`);\n\nreturn [{ json: {\n  documentos: filas.length,\n  trozos,\n  con_error: errores.length,\n  errores,\n  detalle: filas.map((f) => `${f.id} · ${f.trozos ?? 0} trozos`),\n} }];"
+      }
+    },
+    {
+      "id": "c8fa3ded-543e-43a3-a708-647f23cc1aa9",
+      "name": "Sticky Note d12e80f3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        624
+      ],
+      "parameters": {
+        "content": "## Indexar el corpus completo en Qdrant\nQdrant es una **base de datos vectorial**: los vectores quedan guardados aunque n8n se reinicie.\n\nCada documento se descarga de GitHub, se trocea (1.000 / 200) y se guarda en la colección `nexora_guias` con sus metadatos: título, capa, categoría y fuente.\n\nLa capa 1 son las 43 guías de práctica clínica (ids 1–43).",
+        "color": 7
+      }
+    },
+    {
+      "id": "d55cb997-f00c-4b04-ad40-118f208505ad",
+      "name": "Indexar cada documento (subflujo 1c)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        700,
+        384
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "PEGA_AQUI_EL_ID_DEL_FLUJO_1C"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Indexar una tanda del corpus": {
+      "main": [
+        [
+          {
+            "node": "Leer el inventario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer el inventario": {
+      "main": [
+        [
+          {
+            "node": "Documentos de la tanda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Documentos de la tanda": {
+      "main": [
+        [
+          {
+            "node": "Indexar cada documento (subflujo 1c)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Indexar cada documento (subflujo 1c)": {
+      "main": [
+        [
+          {
+            "node": "Resumen de la tanda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

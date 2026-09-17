@@ -1,0 +1,1029 @@
+{
+  "name": "IASP S4 · 2 · Preguntar a las guías",
+  "nodes": [
+    {
+      "id": "3d67c8f4-8725-4fb8-961d-e29c3e1180b6",
+      "name": "Chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        816
+      ],
+      "parameters": {
+        "public": true,
+        "mode": "hostedChat",
+        "authentication": "none",
+        "initialMessages": "Pregúntame sobre las guías de diabetes. Para elegir quién redacta, empieza tu mensaje con /openai, /gemini o /ollama. Sin nada, uso el redactor por defecto.",
+        "options": {
+          "responseMode": "lastNode",
+          "title": "Guías de diabetes · RAG multimotor",
+          "subtitle": "IASP · Sesión 4",
+          "inputPlaceholder": "Escribe tu pregunta…",
+          "loadPreviousSession": "notSupported"
+        }
+      },
+      "webhookId": "b7a8a26b-910e-41d3-9152-20ef77d06ebb"
+    },
+    {
+      "id": "56234b7f-b6c3-4327-a32e-9b35cac8a377",
+      "name": "Configuración",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        816
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "redactor_por_defecto",
+              "value": "openai",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "almacen_para_ollama",
+              "value": "openai",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8bdcde4c-178e-4154-9704-3d4b1b31e172",
+      "name": "Leer el motor",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        816
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "l1",
+              "name": "motor",
+              "value": "={{ ($json.chatInput.trim().match(/^\\/(openai|gemini|ollama)\\b/i)?.[1] ?? $json.redactor_por_defecto).toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "l2",
+              "name": "pregunta",
+              "value": "={{ $json.chatInput.trim().replace(/^\\/(openai|gemini|ollama)\\b\\s*/i, \"\") }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "236d3837-c28a-48d9-be1c-44de3e3acd9d",
+      "name": "¿Quién redacta?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        800
+      ],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "renameOutput": true,
+              "outputKey": "openai",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.motor }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "openai"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "renameOutput": true,
+              "outputKey": "gemini",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.motor }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "gemini"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "renameOutput": true,
+              "outputKey": "ollama",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.motor }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "ollama"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 1
+        }
+      }
+    },
+    {
+      "id": "4a46fddf-1662-42aa-a06a-f24db9a6582d",
+      "name": "Redactor OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.pregunta }}",
+        "options": {
+          "systemMessage": "Eres un asistente que responde preguntas usando la biblioteca documental de NEXORA Salud: guías de práctica clínica del Sistema Nacional de Salud, legislación sanitaria (BOE y UE), documentos de la OMS y artículos científicos sobre IA en salud.\n\nReglas:\n1. Antes de responder, usa SIEMPRE la herramienta guias_clinicas.\n2. Responde solo con lo que devuelva la herramienta. No uses tu conocimiento general.\n3. Si la información no aparece, responde exactamente: \"No encuentro esa información en los documentos cargados.\"\n4. Di de qué documento sale cada dato (su título, que viene en los metadatos, y su año si aparece).\n5. Si los fragmentos vienen de documentos distintos que dicen cosas diferentes, dilo y separa cada fuente.\n6. No des consejo médico personal. Responde en español.\n7. Haz como máximo 2 búsquedas con la herramienta. Si después de 2 búsquedas no tienes el dato, responde la frase de la regla 3.\n\nResponde el redactor OpenAI (gpt-4o-mini), buscando en Qdrant (colección nexora_guias).",
+          "maxIterations": 10,
+          "enableStreaming": false,
+          "returnIntermediateSteps": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "0ff79a92-986c-4309-8006-9d9d92d15e1d",
+      "name": "OpenAI · gpt-4o-mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        224
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "temperature": 0.2
+        }
+      }
+    },
+    {
+      "id": "5f3498d3-e191-4974-97b2-d3a3ee2e649c",
+      "name": "OpenAI · Memoria",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        1024,
+        224
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Chat').first().json.sessionId }}",
+        "contextWindowLength": 6
+      }
+    },
+    {
+      "id": "0e91e89d-f19a-416a-a503-759c67cbe97f",
+      "name": "OpenAI · Embeddings (1.536)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1152,
+        432
+      ],
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {
+          "dimensions": 1536
+        }
+      }
+    },
+    {
+      "id": "dd8f833f-f76c-49ef-8590-7819a0667a8f",
+      "name": "Redactor Gemini",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        960,
+        608
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.pregunta }}",
+        "options": {
+          "systemMessage": "Eres un asistente que responde preguntas sobre guías de práctica clínica del Sistema Nacional de Salud.\n\nReglas:\n1. Antes de responder, usa SIEMPRE la herramienta guias_clinicas.\n2. Responde solo con lo que devuelva la herramienta. No uses tu conocimiento general.\n3. Si la información no aparece, responde exactamente: \"No encuentro esa información en las guías cargadas.\"\n4. Di de qué guía sale cada dato (tipo 1 o tipo 2, y su año si aparece).\n5. No des consejo médico personal. Responde en español.\n6. Haz como máximo 2 búsquedas con la herramienta. Si después de 2 búsquedas no tienes el dato, responde la frase de la regla 3.\n\nResponde el redactor Gemini (gemini-3-flash), buscando en el almacén guias_gemini.",
+          "maxIterations": 10,
+          "enableStreaming": false,
+          "returnIntermediateSteps": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "7e61a173-786f-46bc-8c6b-b3f77d8a1bc0",
+      "name": "Gemini · gemini-3-flash",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        832
+      ],
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {
+          "temperature": 0.2,
+          "maxOutputTokens": 2048
+        }
+      }
+    },
+    {
+      "id": "dcdaaa16-298e-4fee-aff9-ab83df9fee90",
+      "name": "Gemini · Memoria",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        1024,
+        832
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Chat').first().json.sessionId }}",
+        "contextWindowLength": 6
+      }
+    },
+    {
+      "id": "49232e40-7dcd-46b6-bca6-aadc15506690",
+      "name": "guias_clinicas (Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        1152,
+        832
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Busca fragmentos de texto en las guías de práctica clínica cargadas (diabetes tipo 1 y diabetes tipo 2). Úsala para cualquier pregunta clínica.",
+        "memoryKey": {
+          "__rl": true,
+          "mode": "id",
+          "value": "guias_gemini"
+        },
+        "topK": 4,
+        "includeDocumentMetadata": true
+      }
+    },
+    {
+      "id": "0096cb7c-add7-4b7d-99bc-7e632c8c4704",
+      "name": "Gemini · Embeddings (3.072)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        1040
+      ],
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      }
+    },
+    {
+      "id": "386e4d8c-1f59-4c53-b652-7875f550d93e",
+      "name": "¿Qué vectores usa Ollama?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1024,
+        1312
+      ],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "renameOutput": true,
+              "outputKey": "gemini",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.almacen_para_ollama }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "gemini"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "renameOutput": true,
+              "outputKey": "openai",
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.almacen_para_ollama }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "openai"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 0
+        }
+      }
+    },
+    {
+      "id": "2b03cc95-673d-4a46-88e3-7189d1997290",
+      "name": "Redactor Ollama (vectores de Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1424,
+        1008
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.pregunta }}",
+        "options": {
+          "systemMessage": "Eres un asistente que responde preguntas sobre guías de práctica clínica del Sistema Nacional de Salud.\n\nReglas:\n1. Antes de responder, usa SIEMPRE la herramienta guias_clinicas.\n2. Responde solo con lo que devuelva la herramienta. No uses tu conocimiento general.\n3. Si la información no aparece, responde exactamente: \"No encuentro esa información en las guías cargadas.\"\n4. Di de qué guía sale cada dato (tipo 1 o tipo 2, y su año si aparece).\n5. No des consejo médico personal. Responde en español.\n6. Haz como máximo 2 búsquedas con la herramienta. Si después de 2 búsquedas no tienes el dato, responde la frase de la regla 3.\n\nResponde el redactor Ollama (gpt-oss:120b), buscando en el almacén guias_gemini.",
+          "maxIterations": 10,
+          "enableStreaming": false,
+          "returnIntermediateSteps": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "eeb42eee-7459-469a-bd06-736f6c777c52",
+      "name": "Ollama Cloud · gpt-oss:120b (vectores Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        1232
+      ],
+      "parameters": {
+        "model": "gpt-oss:120b",
+        "options": {
+          "temperature": 0.2,
+          "numCtx": 16384
+        }
+      }
+    },
+    {
+      "id": "c32a780b-076f-4862-9b5c-5b1e052bbfd2",
+      "name": "Ollama (vectores Gemini) · Memoria",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        1488,
+        1232
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Chat').first().json.sessionId }}",
+        "contextWindowLength": 6
+      }
+    },
+    {
+      "id": "88f390ec-7c89-4df6-99b2-6c7f94a1d465",
+      "name": "guias_clinicas (Ollama, almacén Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        1616,
+        1232
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Busca fragmentos de texto en las guías de práctica clínica cargadas (diabetes tipo 1 y diabetes tipo 2). Úsala para cualquier pregunta clínica.",
+        "memoryKey": {
+          "__rl": true,
+          "mode": "id",
+          "value": "guias_gemini"
+        },
+        "topK": 4,
+        "includeDocumentMetadata": true
+      }
+    },
+    {
+      "id": "0cc24d2e-8e83-4f11-9b02-d6b709cb7682",
+      "name": "Ollama · Embeddings de Gemini (3.072)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        1440
+      ],
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      }
+    },
+    {
+      "id": "d7a3ce7b-33b0-41c5-b49f-c593b33f8757",
+      "name": "Redactor Ollama (vectores de OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1424,
+        1824
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.pregunta }}",
+        "options": {
+          "systemMessage": "Eres un asistente que responde preguntas usando la biblioteca documental de NEXORA Salud: guías de práctica clínica del Sistema Nacional de Salud, legislación sanitaria (BOE y UE), documentos de la OMS y artículos científicos sobre IA en salud.\n\nReglas:\n1. Antes de responder, usa SIEMPRE la herramienta guias_clinicas.\n2. Responde solo con lo que devuelva la herramienta. No uses tu conocimiento general.\n3. Si la información no aparece, responde exactamente: \"No encuentro esa información en los documentos cargados.\"\n4. Di de qué documento sale cada dato (su título, que viene en los metadatos, y su año si aparece).\n5. Si los fragmentos vienen de documentos distintos que dicen cosas diferentes, dilo y separa cada fuente.\n6. No des consejo médico personal. Responde en español.\n7. Haz como máximo 2 búsquedas con la herramienta. Si después de 2 búsquedas no tienes el dato, responde la frase de la regla 3.\n\nResponde el redactor Ollama (gpt-oss:120b), buscando en Qdrant (colección nexora_guias) con los vectores de OpenAI.",
+          "maxIterations": 10,
+          "enableStreaming": false,
+          "returnIntermediateSteps": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "36a83897-6523-464a-a625-d5d2c2e0a107",
+      "name": "Ollama Cloud · gpt-oss:120b (vectores OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        2048
+      ],
+      "parameters": {
+        "model": "gpt-oss:120b",
+        "options": {
+          "temperature": 0.2,
+          "numCtx": 16384
+        }
+      }
+    },
+    {
+      "id": "e22902b4-2b2d-4bd3-8200-ae450b1e9ec5",
+      "name": "Ollama (vectores OpenAI) · Memoria",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        1488,
+        2048
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Chat').first().json.sessionId }}",
+        "contextWindowLength": 6
+      }
+    },
+    {
+      "id": "cdd165a7-8f8a-4a19-9176-82a9bfdd9602",
+      "name": "Ollama · Embeddings de OpenAI (1.536)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1616,
+        2256
+      ],
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {
+          "dimensions": 1536
+        }
+      }
+    },
+    {
+      "id": "a4afadd4-a5a1-4873-9ab5-4f2ff165551d",
+      "name": "Sticky Note 1b66721b",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        848,
+        2240
+      ],
+      "parameters": {
+        "content": "## Fase 2 · Preguntar\nTu pregunta se convierte en números con el **MISMO** modelo que se usó al indexar, se buscan los **4 trozos más parecidos** y el modelo redacta con ellos.\n\nEmpieza el mensaje con **/openai**, **/gemini** u **/ollama** para elegir quién redacta. El nodo **Configuración** fija el redactor por defecto.",
+        "color": 7
+      }
+    },
+    {
+      "id": "712da250-b84b-4143-8272-fd6f65cc0248",
+      "name": "Sticky Note 39684072",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        848,
+        2496
+      ],
+      "parameters": {
+        "content": "## Mira dentro\nAbre **Logs** → **guias_clinicas** para ver qué trozos ha recuperado.",
+        "color": 5
+      }
+    },
+    {
+      "id": "7d423517-7939-4008-9a14-94bc5cc58f6b",
+      "name": "Sticky Note 7f08b7b5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        848,
+        2752
+      ],
+      "parameters": {
+        "content": "## Ollama redacta, pero busca con los vectores de Gemini\nQuien redacta y quien convierte en números pueden ser de **empresas distintas**.\n\nOllama Cloud no tiene modelos de embeddings. Cambia `almacen_para_ollama` en **Configuración** a `openai` para que busque con los vectores de OpenAI.",
+        "color": 6
+      }
+    },
+    {
+      "id": "53f4208d-1d99-43a9-8512-f0775343c09f",
+      "name": "Sticky Note 0e5f0195",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        848,
+        3008
+      ],
+      "parameters": {
+        "content": "## Experimento\nCambia en una rama los embeddings de la herramienta por los del otro proveedor y pregunta.\nVerás un **error de dimensiones** (1.536 frente a 3.072) o respuestas sin sentido.\n\n**Esa es la lección:** el modelo que redacta se cambia cuando quieras; el de embeddings, no.",
+        "color": 3
+      }
+    },
+    {
+      "id": "4cd4daf8-93a7-4fd9-800e-30d5194a25dc",
+      "name": "Sticky Note c55d308b",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        848,
+        3264
+      ],
+      "parameters": {
+        "content": "## Añadir otro redactor (Mistral, Anthropic…)\n1. Copia una rama entera (Redactor + Respuesta).\n2. Cambia solo el **modelo de chat**.\n3. Deja la herramienta con el almacén y **sus** embeddings.\n4. Añade la salida al Switch **¿Quién redacta?** y un prefijo nuevo en **Leer el motor**.",
+        "color": 2
+      }
+    },
+    {
+      "id": "86432159-ddeb-405e-b62b-200a13559c15",
+      "name": "Respuesta OpenAI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Deja la respuesta en «output» (lo que pinta el chat) y añade las fuentes recuperadas.\nconst MOTOR = 'OpenAI';\nconst ALMACEN = 'Qdrant · nexora_guias';\nconst r = $input.first().json;\n\nconst fuentes = [];\nconst vistos = new Set();\nconst aJson = (x) => {\n  if (typeof x !== 'string') return x;\n  try { return JSON.parse(x); } catch { return x; }\n};\nconst recorrer = (x) => {\n  x = aJson(x);\n  if (Array.isArray(x)) return x.forEach(recorrer);\n  if (!x || typeof x !== 'object') return;\n  if (x.pageContent) {\n    const meta = x.metadata ?? {};\n    const clave = `${meta.fichero}|${meta.loc?.pageNumber}|${x.pageContent.slice(0, 60)}`;\n    if (vistos.has(clave)) return;\n    vistos.add(clave);\n    fuentes.push({\n      fichero: meta.fichero ?? 'sin nombre',\n      titulo: meta.titulo ?? null,\n      categoria: meta.categoria ?? null,\n      capa: meta.capa ?? null,\n      pagina: meta.loc?.pageNumber ?? null,\n      extracto: x.pageContent.replace(/\\s+/g, ' ').trim().slice(0, 220),\n    });\n    return;\n  }\n  if (x.text) return recorrer(x.text);\n  if (x.response) return recorrer(x.response);\n};\nfor (const paso of r.intermediateSteps ?? []) recorrer(paso.observation);\n\n// Si el redactor falla (cuota, demasiadas búsquedas…), se explica en el chat en vez de romperlo.\nconst texto = r.output ?? (r.error ? `⚠️ El redactor no ha podido terminar: ${String(r.error).slice(0, 160)}` : '');\n\nreturn [{ json: {\n  output: `[${MOTOR}] ${texto}`,\n  respuesta: texto,\n  error: r.error ?? null,\n  motor: MOTOR,\n  almacen: ALMACEN,\n  fuentes,\n} }];"
+      }
+    },
+    {
+      "id": "1b26586f-7cc2-4699-9409-6208d2fddd73",
+      "name": "Respuesta Gemini",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        700
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Deja la respuesta en «output» (lo que pinta el chat) y añade las fuentes recuperadas.\nconst MOTOR = 'Gemini';\nconst ALMACEN = 'guias_gemini';\nconst r = $input.first().json;\n\nconst fuentes = [];\nconst vistos = new Set();\nconst aJson = (x) => {\n  if (typeof x !== 'string') return x;\n  try { return JSON.parse(x); } catch { return x; }\n};\nconst recorrer = (x) => {\n  x = aJson(x);\n  if (Array.isArray(x)) return x.forEach(recorrer);\n  if (!x || typeof x !== 'object') return;\n  if (x.pageContent) {\n    const meta = x.metadata ?? {};\n    const clave = `${meta.fichero}|${meta.loc?.pageNumber}|${x.pageContent.slice(0, 60)}`;\n    if (vistos.has(clave)) return;\n    vistos.add(clave);\n    fuentes.push({\n      fichero: meta.fichero ?? 'sin nombre',\n      pagina: meta.loc?.pageNumber ?? null,\n      extracto: x.pageContent.replace(/\\s+/g, ' ').trim().slice(0, 220),\n    });\n    return;\n  }\n  if (x.text) return recorrer(x.text);\n  if (x.response) return recorrer(x.response);\n};\nfor (const paso of r.intermediateSteps ?? []) recorrer(paso.observation);\n\n// Si el redactor falla (cuota, demasiadas búsquedas…), se explica en el chat en vez de romperlo.\nconst texto = r.output ?? (r.error ? `⚠️ El redactor no ha podido terminar: ${String(r.error).slice(0, 160)}` : '');\n\nreturn [{ json: {\n  output: `[${MOTOR}] ${texto}`,\n  respuesta: texto,\n  error: r.error ?? null,\n  motor: MOTOR,\n  almacen: ALMACEN,\n  fuentes,\n} }];"
+      }
+    },
+    {
+      "id": "a9c43f07-4a21-4688-b22a-854e2e8b1564",
+      "name": "Respuesta Ollama (vectores de Gemini)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        1100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Deja la respuesta en «output» (lo que pinta el chat) y añade las fuentes recuperadas.\nconst MOTOR = 'Ollama · vectores de Gemini';\nconst ALMACEN = 'guias_gemini';\nconst r = $input.first().json;\n\nconst fuentes = [];\nconst vistos = new Set();\nconst aJson = (x) => {\n  if (typeof x !== 'string') return x;\n  try { return JSON.parse(x); } catch { return x; }\n};\nconst recorrer = (x) => {\n  x = aJson(x);\n  if (Array.isArray(x)) return x.forEach(recorrer);\n  if (!x || typeof x !== 'object') return;\n  if (x.pageContent) {\n    const meta = x.metadata ?? {};\n    const clave = `${meta.fichero}|${meta.loc?.pageNumber}|${x.pageContent.slice(0, 60)}`;\n    if (vistos.has(clave)) return;\n    vistos.add(clave);\n    fuentes.push({\n      fichero: meta.fichero ?? 'sin nombre',\n      pagina: meta.loc?.pageNumber ?? null,\n      extracto: x.pageContent.replace(/\\s+/g, ' ').trim().slice(0, 220),\n    });\n    return;\n  }\n  if (x.text) return recorrer(x.text);\n  if (x.response) return recorrer(x.response);\n};\nfor (const paso of r.intermediateSteps ?? []) recorrer(paso.observation);\n\n// Si el redactor falla (cuota, demasiadas búsquedas…), se explica en el chat en vez de romperlo.\nconst texto = r.output ?? (r.error ? `⚠️ El redactor no ha podido terminar: ${String(r.error).slice(0, 160)}` : '');\n\nreturn [{ json: {\n  output: `[${MOTOR}] ${texto}`,\n  respuesta: texto,\n  error: r.error ?? null,\n  motor: MOTOR,\n  almacen: ALMACEN,\n  fuentes,\n} }];"
+      }
+    },
+    {
+      "id": "60b51111-a0e4-4296-b541-9d15b04feab8",
+      "name": "Respuesta Ollama (vectores de OpenAI)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        1500
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Deja la respuesta en «output» (lo que pinta el chat) y añade las fuentes recuperadas.\nconst MOTOR = 'Ollama · vectores de OpenAI';\nconst ALMACEN = 'Qdrant · nexora_guias';\nconst r = $input.first().json;\n\nconst fuentes = [];\nconst vistos = new Set();\nconst aJson = (x) => {\n  if (typeof x !== 'string') return x;\n  try { return JSON.parse(x); } catch { return x; }\n};\nconst recorrer = (x) => {\n  x = aJson(x);\n  if (Array.isArray(x)) return x.forEach(recorrer);\n  if (!x || typeof x !== 'object') return;\n  if (x.pageContent) {\n    const meta = x.metadata ?? {};\n    const clave = `${meta.fichero}|${meta.loc?.pageNumber}|${x.pageContent.slice(0, 60)}`;\n    if (vistos.has(clave)) return;\n    vistos.add(clave);\n    fuentes.push({\n      fichero: meta.fichero ?? 'sin nombre',\n      titulo: meta.titulo ?? null,\n      categoria: meta.categoria ?? null,\n      capa: meta.capa ?? null,\n      pagina: meta.loc?.pageNumber ?? null,\n      extracto: x.pageContent.replace(/\\s+/g, ' ').trim().slice(0, 220),\n    });\n    return;\n  }\n  if (x.text) return recorrer(x.text);\n  if (x.response) return recorrer(x.response);\n};\nfor (const paso of r.intermediateSteps ?? []) recorrer(paso.observation);\n\n// Si el redactor falla (cuota, demasiadas búsquedas…), se explica en el chat en vez de romperlo.\nconst texto = r.output ?? (r.error ? `⚠️ El redactor no ha podido terminar: ${String(r.error).slice(0, 160)}` : '');\n\nreturn [{ json: {\n  output: `[${MOTOR}] ${texto}`,\n  respuesta: texto,\n  error: r.error ?? null,\n  motor: MOTOR,\n  almacen: ALMACEN,\n  fuentes,\n} }];"
+      }
+    },
+    {
+      "id": "8dd36541-ad46-436a-9345-38fa0b3fd468",
+      "name": "guias_clinicas (OpenAI · Qdrant)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        1152,
+        224
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Busca fragmentos en la biblioteca de NEXORA Salud (984 documentos: 43 guías de práctica clínica del SNS, legislación sanitaria, documentos de la OMS y artículos sobre IA en salud). Úsala para cualquier pregunta. Escribe la consulta en el idioma de la pregunta y con los términos clínicos concretos.",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "id",
+          "value": "nexora_guias"
+        },
+        "topK": 5,
+        "includeDocumentMetadata": true
+      }
+    },
+    {
+      "id": "491be0fd-4920-410f-8cfa-c5db24675a02",
+      "name": "guias_clinicas (Ollama · Qdrant)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        1616,
+        2048
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Busca fragmentos en la biblioteca de NEXORA Salud (984 documentos: 43 guías de práctica clínica del SNS, legislación sanitaria, documentos de la OMS y artículos sobre IA en salud). Úsala para cualquier pregunta. Escribe la consulta en el idioma de la pregunta y con los términos clínicos concretos.",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "id",
+          "value": "nexora_guias"
+        },
+        "topK": 5,
+        "includeDocumentMetadata": true
+      }
+    }
+  ],
+  "connections": {
+    "Chat": {
+      "main": [
+        [
+          {
+            "node": "Configuración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuración": {
+      "main": [
+        [
+          {
+            "node": "Leer el motor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer el motor": {
+      "main": [
+        [
+          {
+            "node": "¿Quién redacta?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Quién redacta?": {
+      "main": [
+        [
+          {
+            "node": "Redactor OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redactor Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿Qué vectores usa Ollama?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI · gpt-4o-mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redactor OpenAI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI · Memoria": {
+      "ai_memory": [
+        [
+          {
+            "node": "Redactor OpenAI",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini · gemini-3-flash": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redactor Gemini",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini · Memoria": {
+      "ai_memory": [
+        [
+          {
+            "node": "Redactor Gemini",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guias_clinicas (Gemini)": {
+      "ai_tool": [
+        [
+          {
+            "node": "Redactor Gemini",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini · Embeddings (3.072)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "guias_clinicas (Gemini)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Qué vectores usa Ollama?": {
+      "main": [
+        [
+          {
+            "node": "Redactor Ollama (vectores de Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redactor Ollama (vectores de OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Cloud · gpt-oss:120b (vectores Gemini)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redactor Ollama (vectores de Gemini)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama (vectores Gemini) · Memoria": {
+      "ai_memory": [
+        [
+          {
+            "node": "Redactor Ollama (vectores de Gemini)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guias_clinicas (Ollama, almacén Gemini)": {
+      "ai_tool": [
+        [
+          {
+            "node": "Redactor Ollama (vectores de Gemini)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama · Embeddings de Gemini (3.072)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "guias_clinicas (Ollama, almacén Gemini)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Cloud · gpt-oss:120b (vectores OpenAI)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redactor Ollama (vectores de OpenAI)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama (vectores OpenAI) · Memoria": {
+      "ai_memory": [
+        [
+          {
+            "node": "Redactor Ollama (vectores de OpenAI)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactor OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Respuesta OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactor Gemini": {
+      "main": [
+        [
+          {
+            "node": "Respuesta Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactor Ollama (vectores de Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Respuesta Ollama (vectores de Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactor Ollama (vectores de OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Respuesta Ollama (vectores de OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI · Embeddings (1.536)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "guias_clinicas (OpenAI · Qdrant)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guias_clinicas (OpenAI · Qdrant)": {
+      "ai_tool": [
+        [
+          {
+            "node": "Redactor OpenAI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama · Embeddings de OpenAI (1.536)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "guias_clinicas (Ollama · Qdrant)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guias_clinicas (Ollama · Qdrant)": {
+      "ai_tool": [
+        [
+          {
+            "node": "Redactor Ollama (vectores de OpenAI)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

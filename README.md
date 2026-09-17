@@ -97,9 +97,10 @@ rag_nexora_salud/
 │   ├── ampliar_corpus.py            ← ampliación: BOE, EUR-Lex, OMS, PLOS y Frontiers
 │   └── estadisticas_corpus.py       ← recuento de páginas, tokens y trozos
 ├── chatflows/                       ← chatflows de Flowise (OpenAI y Ollama)
-├── n8n/                             ← flujo de n8n del práctico + encargo del montaje multimotor
+├── n8n/                             ← flujos de n8n: práctico de clase, corpus completo en Qdrant y encargo multimotor
 ├── docs/                            ← guía del pipeline, diseño del corpus y estadísticas
-├── index.html                       ← webapp de demo para los chatflows de Flowise
+├── index.html                       ← portada de GitHub Pages (copia de index_n8n.html)
+├── index_n8n.html                   ← interfaz web del RAG en n8n + Qdrant
 └── specs_stack_rag_flowise.md       ← especificaciones del stack local
 ```
 
@@ -122,7 +123,18 @@ de embeddings) se construye con el MCP de n8n siguiendo
 
 **Corpus completo en la nube.** Los 984 documentos (128.787 trozos) están indexados en
 Qdrant Cloud desde n8n, y [`index_n8n.html`](index_n8n.html) es la interfaz tipo chat que
-lo consulta y enseña las fuentes de cada respuesta. Qué hay montado, cómo se reindexa y
+lo consulta y enseña las fuentes de cada respuesta
+([pruébala](https://lougedo.github.io/rag_nexora_salud/)). Para montarlo en tu cuenta, importa
+los tres flujos de [`n8n/`](n8n/), sin credenciales:
+
+| Flujo | Qué hace |
+|---|---|
+| `IASP_S4_1c_indexar_documento_subflujo.json` | Descarga un PDF del corpus, lo trocea y lo guarda en Qdrant (`nexora_guias`) |
+| `IASP_S4_1b_indexar_corpus_qdrant.json` | Formulario *desde / hasta*: lee el inventario y llama a 1c por cada documento. Sustituye `PEGA_AQUI_EL_ID_DEL_FLUJO_1C` por el id de tu 1c |
+| `IASP_S4_2_preguntar_guias_qdrant.json` | El chat que usa la web: OpenAI u Ollama sobre Qdrant, y Gemini sobre las dos guías en memoria |
+
+Necesitas credenciales de OpenAI y de Qdrant Cloud (el plan gratuito basta); Ollama y Gemini
+son opcionales. Qué hay montado, cómo se reindexa y
 qué falló por el camino: [`docs/RAG_N8N_QDRANT.md`](docs/RAG_N8N_QDRANT.md).
 
 ### 2 · Flowise + ChromaDB en local (sesión 5)

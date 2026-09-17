@@ -1,0 +1,331 @@
+{
+  "name": "IASP S4 · 1c · Indexar un documento (subflujo)",
+  "nodes": [
+    {
+      "id": "573d4284-ec9e-4189-88bb-ba7a2e8743f1",
+      "name": "Documento recibido",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        416
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "cf9d6983-f173-42b0-bb23-f8684ac43108",
+      "name": "Descargar el PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        416
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "pdf"
+            }
+          },
+          "timeout": 180000
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "fe05f173-8450-4c7e-8152-58a1b1190a2f",
+      "name": "Marcar como PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        416
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// GitHub entrega los PDF como \"application/octet-stream\"; el lector solo acepta \"application/pdf\".\nreturn $input.all().map((item) => {\n  const pdf = item.binary?.pdf;\n  if (pdf) pdf.mimeType = 'application/pdf';\n  return {\n    json: { ...item.json, tiene_pdf: Boolean(pdf) && !item.json.error },\n    binary: item.binary,\n    pairedItem: item.pairedItem,\n  };\n});"
+      }
+    },
+    {
+      "id": "18af19c7-5372-4759-a23c-f967e32caf0d",
+      "name": "¿Se descargó?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        416
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.tiene_pdf }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "912837e3-e33b-4529-9704-5824e674412d",
+      "name": "Guardar en Qdrant",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "id",
+          "value": "nexora_guias"
+        },
+        "embeddingBatchSize": 200
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "342ab696-3e66-446a-a354-4d66c96873c5",
+      "name": "OpenAI · Embeddings (1.536 números)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        224
+      ],
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {
+          "dimensions": 1536,
+          "batchSize": 512
+        }
+      }
+    },
+    {
+      "id": "d0d4589b-12e0-4a88-8208-7ee52c4bc734",
+      "name": "Leer PDF",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        224
+      ],
+      "parameters": {
+        "dataType": "binary",
+        "binaryMode": "allInputData",
+        "loader": "pdfLoader",
+        "textSplittingMode": "custom",
+        "options": {
+          "splitPages": true,
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "doc_id",
+                "value": "={{ $('Documento recibido').item.json.id }}"
+              },
+              {
+                "name": "fichero",
+                "value": "={{ $('Documento recibido').item.json.fichero }}"
+              },
+              {
+                "name": "titulo",
+                "value": "={{ $('Documento recibido').item.json.titulo }}"
+              },
+              {
+                "name": "capa",
+                "value": "={{ $('Documento recibido').item.json.capa }}"
+              },
+              {
+                "name": "categoria",
+                "value": "={{ $('Documento recibido').item.json.categoria }}"
+              },
+              {
+                "name": "fuente",
+                "value": "={{ $('Documento recibido').item.json.fuente }}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "ead952a4-bd1e-4a30-b1e5-71215df75bdf",
+      "name": "Trocear (1.000 / 200)",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        432
+      ],
+      "parameters": {
+        "chunkSize": 1000,
+        "chunkOverlap": 200
+      }
+    },
+    {
+      "id": "880234dc-799e-4d5e-b696-9893c9efd6c1",
+      "name": "Contar trozos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        208
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Devuelve solo el recuento: los trozos ya están en Qdrant.\nconst d = $('Documento recibido').first().json;\nconst items = $input.all();\nconst trozos = items.filter((i) => i.json.pageContent !== undefined).length;\nconst fallo = items.find((i) => i.json.error)?.json.error;\n\nreturn [{ json: {\n  id: d.id,\n  titulo: d.titulo,\n  capa: d.capa,\n  trozos,\n  error: trozos ? '' : (fallo ? String(fallo.message ?? fallo).slice(0, 200) : 'No se guardó ningún trozo (¿PDF sin texto?)'),\n} }];"
+      }
+    },
+    {
+      "id": "b1ab835f-dc1e-4c71-b4a2-42201d6dcbda",
+      "name": "Sin PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        608
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const d = $('Documento recibido').first().json;\nreturn [{ json: { id: d.id, titulo: d.titulo, capa: d.capa, trozos: 0, error: 'No se pudo descargar el PDF' } }];"
+      }
+    },
+    {
+      "id": "4ed370db-0f39-4cf5-8e5b-c2edd5f5eaf0",
+      "name": "Sticky Note f302fa38",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        608
+      ],
+      "parameters": {
+        "content": "## Un documento cada vez\nLo llama el flujo **1b**. Cada documento se procesa en su propia ejecución para que n8n libere la memoria al terminar.\n\nDevuelve solo el número de trozos guardados en la colección `nexora_guias` de Qdrant.",
+        "color": 7
+      }
+    }
+  ],
+  "connections": {
+    "Documento recibido": {
+      "main": [
+        [
+          {
+            "node": "Descargar el PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar el PDF": {
+      "main": [
+        [
+          {
+            "node": "Marcar como PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar como PDF": {
+      "main": [
+        [
+          {
+            "node": "¿Se descargó?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Se descargó?": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sin PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Contar trozos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI · Embeddings (1.536 números)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Guardar en Qdrant",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer PDF": {
+      "ai_document": [
+        [
+          {
+            "node": "Guardar en Qdrant",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trocear (1.000 / 200)": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Leer PDF",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

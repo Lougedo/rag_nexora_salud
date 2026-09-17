@@ -24,7 +24,7 @@ Resumen operativo: inventario → documentos internos → descarga → indexaci�
                nexora_salud_ollama  (768)                       clase_s4/ en clase       (para comparar)
                      │
                      ▼
-            Flowise (chatflows/) ──> index.html
+            Flowise (chatflows/)
 ```
 
 ---
